@@ -3131,7 +3131,7 @@ function AuthRegisterModal({
     className: "relative group text-center transition-all duration-500"
   }, /*#__PURE__*/React.createElement("img", {
     key: accountType,
-    src: accountType === 'conductor' ? 'assets/driver_illustration.png' : 'assets/student_illustration.jpg',
+    src: accountType === 'conductor' ? 'assets/driver_illustration.png' : 'assets/student_illustration.png',
     alt: accountType === 'conductor' ? 'Conductor RutaU' : 'Estudiantes RutaU',
     className: "w-full max-w-[440px] h-auto object-contain drop-shadow-[0_25px_35px_rgba(234,88,12,0.25)] rounded-2xl transform transition duration-500 hover:scale-105"
   }), /*#__PURE__*/React.createElement("div", {
