@@ -524,7 +524,7 @@ function RutaUApp() {
     } catch (e) {}
     setIsLoginModalOpen(false);
     setActiveTab('feed');
-    addToast(`¡Bienvenido a RutaU, ${user.full_name}! Token JWT verificado (8 hrs de validez).`, 'success');
+    addToast(`¡Bienvenido a RutaU, ${user.full_name}! Sesión institucional verificada.`, 'success');
   };
   const handleRegister = (user, token) => {
     const check = JWTService.verify(token);
@@ -548,7 +548,7 @@ function RutaUApp() {
     } catch (e) {}
     setIsRegisterModalOpen(false);
     setActiveTab('feed');
-    addToast(`¡Registro exitoso, ${user.full_name}! Token JWT institucional activado.`, 'success');
+    addToast(`¡Registro exitoso, ${user.full_name}! Cuenta institucional activada.`, 'success');
   };
   const handleUpdateProfile = updatedUser => {
     setCurrentUser(updatedUser);
@@ -580,7 +580,7 @@ function RutaUApp() {
       localStorage.removeItem('rutau_current_user');
     } catch (e) {}
     setActiveTab('landing');
-    addToast('Sesión cerrada y token JWT institucional revocado.', 'info');
+    addToast('Sesión cerrada correctamente.', 'info');
   };
   const handleOpenBookingModal = tripOrId => {
     if (!currentUser) {
@@ -1186,12 +1186,12 @@ function Navbar({
     className: "flex items-center gap-2 sm:gap-2.5 bg-white py-1 px-3 rounded-full border border-orange-200 shadow-sm"
   }, /*#__PURE__*/React.createElement("div", {
     className: "w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center font-bold text-white text-xs shadow-sm cursor-pointer hover:ring-2 hover:ring-emerald-400 transition",
-    title: `Perfil Institucional (HU-03): ${currentUser.full_name}`,
+    title: `Perfil Institucional: ${currentUser.full_name}`,
     onClick: onOpenProfile
   }, currentUser.full_name.split(' ').map(n => n[0]).slice(0, 2).join('')), /*#__PURE__*/React.createElement("div", {
     className: "hidden lg:block text-left text-xs cursor-pointer hover:opacity-85 transition",
     onClick: onOpenProfile,
-    title: "Configurar Perfil Institucional (HU-03: Nombre, Facultad y Zona Residencial)"
+    title: "Configurar Perfil Institucional"
   }, /*#__PURE__*/React.createElement("span", {
     className: "font-bold text-slate-800 block truncate max-w-[120px]"
   }, currentUser.full_name), /*#__PURE__*/React.createElement("span", {
@@ -1203,20 +1203,14 @@ function Navbar({
   }, currentUser.residential_zone || 'Robledo'))), /*#__PURE__*/React.createElement("button", {
     onClick: onOpenProfile,
     className: "p-1.5 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition",
-    title: "Configurar Perfil Institucional (HU-03)"
+    title: "Configurar Perfil Institucional"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "user-cog",
     className: "w-3.5 h-3.5"
-  })), jwtToken && /*#__PURE__*/React.createElement("span", {
-    className: "hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold",
-    title: "Sesi\xF3n validada con JWT HS256 y Vinculaci\xF3n Activa (HU-02)"
-  }, /*#__PURE__*/React.createElement("i", {
-    "data-lucide": "shield-check",
-    className: "w-3 h-3 text-emerald-600"
-  }), /*#__PURE__*/React.createElement("span", null, "JWT")), /*#__PURE__*/React.createElement("button", {
+  })), /*#__PURE__*/React.createElement("button", {
     onClick: onLogout,
     className: "p-1 text-slate-400 hover:text-rose-500 transition ml-0.5",
-    title: "Cerrar Sesi\xF3n y Revocar Token JWT"
+    title: "Cerrar Sesi\xF3n"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "log-out",
     className: "w-4 h-4"
@@ -1225,11 +1219,11 @@ function Navbar({
   }, /*#__PURE__*/React.createElement("button", {
     onClick: onOpenRegister,
     className: "hidden sm:flex px-3.5 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold border border-orange-200 transition active:scale-95 items-center gap-1.5",
-    title: "Registrarse con c\xF3digo de verificaci\xF3n OTP (HU-02)"
+    title: "Registrarse en RutaU"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "user-plus",
     className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, "Registrarse (HU-02)")), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("span", null, "Registrarse")), /*#__PURE__*/React.createElement("button", {
     onClick: onOpenLogin,
     className: "px-4 py-2 rounded-xl bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold shadow-md shadow-orange-500/25 transition active:scale-95 flex items-center gap-2"
   }, /*#__PURE__*/React.createElement("i", {
@@ -1283,33 +1277,23 @@ function StatusBar({
     type: "button",
     onClick: () => onSwitchDemoUser && onSwitchDemoUser('usr-2'),
     className: `px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition active:scale-95 flex items-center gap-1 ${currentUser?.id === 'usr-2' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-100'}`,
-    title: "Demostraci\xF3n como Pasajera: Joveidy Villarreal (Residencia Robledo \u2022 Coincidencias HU-03)"
+    title: "Demostraci\xF3n como Pasajera: Joveidy Villarreal (Residencia Robledo)"
   }, /*#__PURE__*/React.createElement("span", null, "\uD83C\uDF92 Pasajera"), /*#__PURE__*/React.createElement("span", {
     className: "hidden lg:inline text-[9.5px] opacity-90"
   }, "(Joveidy)")), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: onOpenRegister,
     className: "px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 transition active:scale-95 flex items-center gap-1",
-    title: "Demostraci\xF3n de C\xF3digo OTP Institucional (HU-02)"
-  }, /*#__PURE__*/React.createElement("span", null, "\u2728 Probar OTP"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[9px] bg-amber-200 text-amber-950 px-1 rounded font-extrabold"
-  }, "HU-02")), currentUser && /*#__PURE__*/React.createElement("button", {
+    title: "Demostraci\xF3n de Verificaci\xF3n por C\xF3digo OTP"
+  }, /*#__PURE__*/React.createElement("span", null, "\u2728 Probar OTP")), currentUser && /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: onOpenProfile,
     className: "px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 transition active:scale-95 flex items-center gap-1",
-    title: "Configuraci\xF3n de Perfil Institucional (HU-03)"
-  }, /*#__PURE__*/React.createElement("span", null, "\uD83C\uDFAF Perfil"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[9px] bg-slate-200 text-slate-800 px-1 rounded font-extrabold"
-  }, "HU-03"))), jwtToken ? /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-bold text-[10px] flex items-center gap-1 shadow-2xs",
-    title: "Credencial criptogr\xE1fica JWT con firma HMAC-SHA256 activa"
-  }, /*#__PURE__*/React.createElement("i", {
-    "data-lucide": "shield-check",
-    className: "w-3 h-3 text-emerald-600"
-  }), /*#__PURE__*/React.createElement("span", null, "JWT HS256 ACTIVO")) : /*#__PURE__*/React.createElement("button", {
+    title: "Configuraci\xF3n de Perfil Institucional"
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83C\uDFAF Perfil"))), !currentUser && /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: onOpenLogin,
-    className: "px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition"
+    className: "px-2.5 py-1 rounded-lg bg-white hover:bg-orange-50 text-slate-700 hover:text-[#f25019] text-[10.5px] font-bold border border-orange-200/80 transition"
   }, "Iniciar Sesi\xF3n"))));
 }
 
@@ -2048,10 +2032,8 @@ function TripFeed({
     type: "button",
     onClick: () => onFilterChange('onlyMyZone', !filters.onlyMyZone),
     className: `px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-xs ${filters.onlyMyZone ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-amber-600 shadow-sm ring-2 ring-amber-300' : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'}`,
-    title: `Filtrar rutas que coincidan con tu zona residencial: ${currentUser.residential_zone} (HU-03)`
-  }, /*#__PURE__*/React.createElement("span", null, "\uD83C\uDFAF"), /*#__PURE__*/React.createElement("span", null, "Mis Coincidencias (", currentUser.residential_zone.split(' ')[0], ")"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] px-1.5 py-0.2 bg-amber-200/80 text-amber-950 rounded-full font-extrabold"
-  }, "HU-03")))), /*#__PURE__*/React.createElement("div", {
+    title: `Filtrar rutas que coincidan con tu zona residencial: ${currentUser.residential_zone}`
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83C\uDFAF"), /*#__PURE__*/React.createElement("span", null, "Mis Coincidencias (", currentUser.residential_zone.split(' ')[0], ")")))), /*#__PURE__*/React.createElement("div", {
     className: "mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
     className: "text-lg font-bold text-slate-900 flex items-center gap-2"
@@ -2241,9 +2223,7 @@ function TripCard({
     className: "text-amber-600 text-sm"
   }, "\uD83C\uDFAF"), /*#__PURE__*/React.createElement("span", {
     className: "truncate"
-  }, "Coincide con tu zona residencial: ", /*#__PURE__*/React.createElement("strong", null, currentUser.residential_zone))), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] bg-amber-200/90 text-amber-950 px-2 py-0.5 rounded-full font-extrabold shrink-0 ml-1.5"
-  }, "HU-03")), /*#__PURE__*/React.createElement("div", {
+  }, "Coincide con tu zona residencial: ", /*#__PURE__*/React.createElement("strong", null, currentUser.residential_zone)))), /*#__PURE__*/React.createElement("div", {
     className: "space-y-2.5 my-3.5 bg-[#fffaf7] p-3.5 rounded-xl border border-orange-100"
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex items-start gap-2.5 text-xs"
@@ -2539,8 +2519,11 @@ function AuthLoginModal({
     "data-lucide": "key",
     className: "w-3 h-3 text-orange-500"
   }), "Pruebas r\xE1pidas:"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] text-emerald-700 font-mono font-bold"
-  }, "\uD83D\uDD12 JWT HS256")), /*#__PURE__*/React.createElement("div", {
+    className: "text-[10px] text-emerald-700 font-semibold flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "shield-check",
+    className: "w-3 h-3 text-emerald-600"
+  }), " Acceso Seguro")), /*#__PURE__*/React.createElement("div", {
     className: "flex flex-wrap gap-1.5"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
@@ -2775,7 +2758,7 @@ function AuthRegisterModal({
 
     // Generar Token JWT Seguro (HS256 con 8 horas de validez)
     const token = JWTService.sign(user, 8);
-    addToast(`¡Identidad confirmada con éxito (HU-02)! Cuenta activada para ${fullName}.`, 'success');
+    addToast(`¡Identidad confirmada con éxito ! Cuenta activada para ${fullName}.`, 'success');
     onRegister(user, token);
   };
   return /*#__PURE__*/React.createElement("div", {
@@ -2807,7 +2790,7 @@ function AuthRegisterModal({
     className: "text-2xl sm:text-3xl font-extrabold text-[#222222] tracking-tight mb-1"
   }, "Crea tu cuenta en RutaU"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-500 mb-4 font-medium"
-  }, "Completa tu perfil institucional (HU-03) y valida tu vinculaci\xF3n activa por c\xF3digo (HU-02)."), registerError && /*#__PURE__*/React.createElement("div", {
+  }, "Completa tu perfil institucional y valida tu vinculaci\xF3n activa por c\xF3digo."), registerError && /*#__PURE__*/React.createElement("div", {
     className: "mb-3.5 p-3 bg-rose-50 border-2 border-rose-300 rounded-xl text-rose-900 text-xs shadow-sm flex items-start gap-2.5"
   }, /*#__PURE__*/React.createElement("div", {
     className: "p-1 bg-rose-100 rounded-lg text-rose-600 shrink-0 mt-0.5"
@@ -2896,9 +2879,7 @@ function AuthRegisterModal({
     className: "grid grid-cols-2 gap-2.5"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Facultad / Carrera"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[9px] font-bold text-orange-600"
-  }, "HU-03")), /*#__PURE__*/React.createElement("select", {
+  }, /*#__PURE__*/React.createElement("span", null, "Facultad / Carrera")), /*#__PURE__*/React.createElement("select", {
     value: faculty,
     onChange: e => setFaculty(e.target.value),
     className: "w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
@@ -2920,9 +2901,7 @@ function AuthRegisterModal({
     value: "Otra Carrera Institucional"
   }, "Otra Carrera"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Zona Residencial"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[9px] font-bold text-orange-600"
-  }, "HU-03")), /*#__PURE__*/React.createElement("select", {
+  }, /*#__PURE__*/React.createElement("span", null, "Zona Residencial")), /*#__PURE__*/React.createElement("select", {
     value: residentialZone,
     onChange: e => setResidentialZone(e.target.value),
     className: "w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
@@ -3020,7 +2999,7 @@ function AuthRegisterModal({
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "shield-check",
     className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, "Continuar con Verificaci\xF3n de Identidad (HU-02)"), /*#__PURE__*/React.createElement("i", {
+  }), /*#__PURE__*/React.createElement("span", null, "Continuar con Verificaci\xF3n de Identidad"), /*#__PURE__*/React.createElement("i", {
     "data-lucide": "arrow-right",
     className: "w-3.5 h-3.5"
   }))), /*#__PURE__*/React.createElement("p", {
@@ -3040,7 +3019,7 @@ function AuthRegisterModal({
     className: "flex items-center gap-2 mb-1"
   }, /*#__PURE__*/React.createElement("span", {
     className: "px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300"
-  }, "HU-02 \u2022 \xC9pica EP-01"), /*#__PURE__*/React.createElement("span", {
+  }, "Verificaci\xF3n Institucional"), /*#__PURE__*/React.createElement("span", {
     className: "px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800"
   }, "Vinculaci\xF3n Activa")), /*#__PURE__*/React.createElement("h2", {
     className: "text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2"
@@ -3111,7 +3090,7 @@ function AuthRegisterModal({
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "check-circle-2",
     className: "w-4 h-4"
-  }), /*#__PURE__*/React.createElement("span", null, "Activar Cuenta y Confirmar Vinculaci\xF3n (HU-02)")), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("span", null, "Activar Cuenta y Confirmar Vinculaci\xF3n")), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center justify-between text-xs pt-1 border-t border-slate-100"
   }, /*#__PURE__*/React.createElement("button", {
     type: "button",
@@ -3204,16 +3183,14 @@ function InstitutionalProfileModal({
     className: "flex items-center gap-2 flex-wrap"
   }, /*#__PURE__*/React.createElement("h2", {
     className: "text-xl sm:text-2xl font-black text-slate-900 tracking-tight"
-  }, "Mi Perfil Institucional"), /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300"
-  }, "HU-03 \u2022 EP-01")), /*#__PURE__*/React.createElement("p", {
+  }, "Mi Perfil Institucional")), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-500 mt-0.5 font-medium flex items-center gap-1.5 flex-wrap"
   }, /*#__PURE__*/React.createElement("span", {
     className: "text-emerald-700 font-semibold flex items-center gap-1"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "shield-check",
     className: "w-3.5 h-3.5 text-emerald-600"
-  }), "Vinculaci\xF3n Activa Verificada (HU-02)"), /*#__PURE__*/React.createElement("span", null, "\u2022"), /*#__PURE__*/React.createElement("span", null, "I.U. Pascual Bravo")))), /*#__PURE__*/React.createElement("form", {
+  }), "Vinculaci\xF3n Activa Verificada"), /*#__PURE__*/React.createElement("span", null, "\u2022"), /*#__PURE__*/React.createElement("span", null, "I.U. Pascual Bravo")))), /*#__PURE__*/React.createElement("form", {
     onSubmit: handleSubmit,
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
@@ -3242,9 +3219,7 @@ function InstitutionalProfileModal({
     className: "grid grid-cols-1 sm:grid-cols-2 gap-3.5"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between"
-  }, /*#__PURE__*/React.createElement("span", null, "Facultad / Programa Acad\xE9mico *"), /*#__PURE__*/React.createElement("span", {
-    className: "text-[10px] font-bold text-orange-600"
-  }, "HU-03")), /*#__PURE__*/React.createElement("select", {
+  }, /*#__PURE__*/React.createElement("span", null, "Facultad / Programa Acad\xE9mico *")), /*#__PURE__*/React.createElement("select", {
     value: faculty,
     onChange: e => setFaculty(e.target.value),
     className: "w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
@@ -3283,7 +3258,7 @@ function InstitutionalProfileModal({
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "map-pin",
     className: "w-4 h-4 text-orange-600"
-  }), /*#__PURE__*/React.createElement("span", null, "Zona Residencial de Destino Habitual * (HU-03)")), /*#__PURE__*/React.createElement("span", {
+  }), /*#__PURE__*/React.createElement("span", null, "Zona Residencial de Destino Habitual *")), /*#__PURE__*/React.createElement("span", {
     className: "text-[10px] bg-orange-100 text-orange-900 px-2 py-0.5 rounded-full font-bold"
   }, "Coincidencias Autom\xE1ticas")), /*#__PURE__*/React.createElement("select", {
     value: residentialZone,
@@ -3311,7 +3286,7 @@ function InstitutionalProfileModal({
     value: "Calasanz / Floresta"
   }, "Calasanz / Ferrini / Floresta")), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-600 mt-2 leading-relaxed"
-  }, "\uD83C\uDFAF ", /*#__PURE__*/React.createElement("strong", null, "Criterio HU-03:"), " Al configurar tu zona residencial, la cartelera nocturna destacar\xE1 autom\xE1ticamente trayectos hacia tu barrio con el badge ", /*#__PURE__*/React.createElement("span", {
+  }, "\uD83C\uDFAF ", /*#__PURE__*/React.createElement("strong", null, "Coincidencia de ruta:"), " Al configurar tu zona residencial, la cartelera nocturna destacar\xE1 autom\xE1ticamente trayectos hacia tu barrio con el badge ", /*#__PURE__*/React.createElement("span", {
     className: "text-orange-700 font-bold"
   }, "\"Coincide con tu zona residencial\""), " y te permitir\xE1 filtrarlos en un clic.")), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 sm:grid-cols-2 gap-3.5"
@@ -3372,7 +3347,7 @@ function InstitutionalProfileModal({
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "save",
     className: "w-4 h-4"
-  }), /*#__PURE__*/React.createElement("span", null, "Guardar Perfil Institucional (HU-03)"))))));
+  }), /*#__PURE__*/React.createElement("span", null, "Guardar Perfil Institucional"))))));
 }
 
 // ==========================================================================
@@ -3966,7 +3941,7 @@ function DigitalReceiptModal({
     className: "text-lg font-black text-slate-900 tracking-tight"
   }, "Comprobante Digital RutaU"), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-500 font-medium"
-  }, "Instituci\xF3n Universitaria Pascual Bravo \u2022 HU-08 & HU-09"), /*#__PURE__*/React.createElement("span", {
+  }, "Instituci\xF3n Universitaria Pascual Bravo"), /*#__PURE__*/React.createElement("span", {
     className: "inline-block mt-2 px-3 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10.5px] font-bold"
   }, "Aporte Solidario de Combustible")), /*#__PURE__*/React.createElement("div", {
     className: "py-4 space-y-2.5 text-xs text-slate-600"
@@ -4069,7 +4044,7 @@ function ReviewRatingModal({
       });
     }
     if (addToast) {
-      addToast(`¡Calificación de ${rating} estrellas guardada para ${targetUser.name}! Fortalece la confianza comunitaria (HU-10).`, 'success');
+      addToast(`¡Calificación de ${rating} estrellas guardada para ${targetUser.name}! Fortalece la confianza comunitaria.`, 'success');
     }
     onClose();
   };
@@ -4094,7 +4069,7 @@ function ReviewRatingModal({
     className: "text-base font-extrabold text-slate-900 leading-tight"
   }, "Calificaci\xF3n Comunitaria"), /*#__PURE__*/React.createElement("span", {
     className: "text-[11px] text-slate-500 font-medium"
-  }, "Eval\xFAa a ", targetUser.name, " \u2022 HU-10"))), /*#__PURE__*/React.createElement("form", {
+  }, "Eval\xFAa a ", targetUser.name))), /*#__PURE__*/React.createElement("form", {
     onSubmit: handleSubmit,
     className: "space-y-4"
   }, /*#__PURE__*/React.createElement("div", {
@@ -4236,7 +4211,7 @@ function MyTripsView({
         trip
       }),
       className: "flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200",
-      title: "Ver Comprobante Digital con c\xE1lculo de ahorro (HU-08 & HU-09)"
+      title: "Ver Comprobante Digital"
     }, /*#__PURE__*/React.createElement("i", {
       "data-lucide": "receipt",
       className: "w-3.5 h-3.5"
@@ -4246,7 +4221,7 @@ function MyTripsView({
         name: trip.driver_name
       }),
       className: "py-2 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-amber-200",
-      title: "Calificar Conductor (HU-10)"
+      title: "Calificar Conductor"
     }, /*#__PURE__*/React.createElement("i", {
       "data-lucide": "star",
       className: "w-3.5 h-3.5 fill-amber-500 text-amber-500"
@@ -4310,7 +4285,7 @@ function MyTripsView({
       trip: t
     }),
     className: "flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200",
-    title: "Ver desglose y aporte de gasolina del trayecto (HU-08)"
+    title: "Ver Desglose de Gasolina"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "receipt",
     className: "w-3.5 h-3.5"

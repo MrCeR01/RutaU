@@ -533,7 +533,7 @@ function RutaUApp() {
     } catch (e) {}
     setIsLoginModalOpen(false);
     setActiveTab('feed');
-    addToast(`¡Bienvenido a RutaU, ${user.full_name}! Token JWT verificado (8 hrs de validez).`, 'success');
+    addToast(`¡Bienvenido a RutaU, ${user.full_name}! Sesión institucional verificada.`, 'success');
   };
 
   const handleRegister = (user, token) => {
@@ -559,7 +559,7 @@ function RutaUApp() {
     } catch (e) {}
     setIsRegisterModalOpen(false);
     setActiveTab('feed');
-    addToast(`¡Registro exitoso, ${user.full_name}! Token JWT institucional activado.`, 'success');
+    addToast(`¡Registro exitoso, ${user.full_name}! Cuenta institucional activada.`, 'success');
   };
 
   const handleUpdateProfile = (updatedUser) => {
@@ -596,7 +596,7 @@ function RutaUApp() {
       localStorage.removeItem('rutau_current_user');
     } catch (e) {}
     setActiveTab('landing');
-    addToast('Sesión cerrada y token JWT institucional revocado.', 'info');
+    addToast('Sesión cerrada correctamente.', 'info');
   };
 
   const handleOpenBookingModal = (tripOrId) => {
@@ -1243,7 +1243,7 @@ function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, on
             <div className="flex items-center gap-2 sm:gap-2.5 bg-white py-1 px-3 rounded-full border border-orange-200 shadow-sm">
               <div 
                 className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center font-bold text-white text-xs shadow-sm cursor-pointer hover:ring-2 hover:ring-emerald-400 transition"
-                title={`Perfil Institucional (HU-03): ${currentUser.full_name}`}
+                title={`Perfil Institucional: ${currentUser.full_name}`}
                 onClick={onOpenProfile}
               >
                 {currentUser.full_name.split(' ').map(n => n[0]).slice(0, 2).join('')}
@@ -1251,7 +1251,7 @@ function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, on
               <div 
                 className="hidden lg:block text-left text-xs cursor-pointer hover:opacity-85 transition" 
                 onClick={onOpenProfile} 
-                title="Configurar Perfil Institucional (HU-03: Nombre, Facultad y Zona Residencial)"
+                title="Configurar Perfil Institucional"
               >
                 <span className="font-bold text-slate-800 block truncate max-w-[120px]">{currentUser.full_name}</span>
                 <span className="text-[10.5px] text-emerald-600 font-semibold capitalize flex items-center gap-1">
@@ -1263,20 +1263,15 @@ function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, on
               <button 
                 onClick={onOpenProfile}
                 className="p-1.5 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
-                title="Configurar Perfil Institucional (HU-03)"
+                title="Configurar Perfil Institucional"
               >
                 <i data-lucide="user-cog" className="w-3.5 h-3.5"></i>
               </button>
-              {jwtToken && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold" title="Sesión validada con JWT HS256 y Vinculación Activa (HU-02)">
-                  <i data-lucide="shield-check" className="w-3 h-3 text-emerald-600"></i>
-                  <span>JWT</span>
-                </span>
-              )}
+
               <button 
                 onClick={onLogout}
                 className="p-1 text-slate-400 hover:text-rose-500 transition ml-0.5"
-                title="Cerrar Sesión y Revocar Token JWT"
+                title="Cerrar Sesión"
               >
                 <i data-lucide="log-out" className="w-4 h-4"></i>
               </button>
@@ -1286,10 +1281,10 @@ function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, on
               <button 
                 onClick={onOpenRegister}
                 className="hidden sm:flex px-3.5 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold border border-orange-200 transition active:scale-95 items-center gap-1.5"
-                title="Registrarse con código de verificación OTP (HU-02)"
+                title="Registrarse en RutaU"
               >
                 <i data-lucide="user-plus" className="w-3.5 h-3.5"></i>
-                <span>Registrarse (HU-02)</span>
+                <span>Registrarse</span>
               </button>
               <button 
                 onClick={onOpenLogin}
@@ -1350,7 +1345,7 @@ function StatusBar({ jwtToken, currentUser, onSwitchDemoUser, onOpenRegister, on
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-100'
               }`}
-              title="Demostración como Pasajera: Joveidy Villarreal (Residencia Robledo • Coincidencias HU-03)"
+              title="Demostración como Pasajera: Joveidy Villarreal (Residencia Robledo)"
             >
               <span>🎒 Pasajera</span>
               <span className="hidden lg:inline text-[9.5px] opacity-90">(Joveidy)</span>
@@ -1359,34 +1354,29 @@ function StatusBar({ jwtToken, currentUser, onSwitchDemoUser, onOpenRegister, on
               type="button"
               onClick={onOpenRegister}
               className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 transition active:scale-95 flex items-center gap-1"
-              title="Demostración de Código OTP Institucional (HU-02)"
+              title="Demostración de Verificación por Código OTP"
             >
               <span>✨ Probar OTP</span>
-              <span className="text-[9px] bg-amber-200 text-amber-950 px-1 rounded font-extrabold">HU-02</span>
+              
             </button>
             {currentUser && (
               <button
                 type="button"
                 onClick={onOpenProfile}
                 className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 transition active:scale-95 flex items-center gap-1"
-                title="Configuración de Perfil Institucional (HU-03)"
+                title="Configuración de Perfil Institucional"
               >
                 <span>🎯 Perfil</span>
-                <span className="text-[9px] bg-slate-200 text-slate-800 px-1 rounded font-extrabold">HU-03</span>
+                
               </button>
             )}
           </div>
 
-          {jwtToken ? (
-            <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-bold text-[10px] flex items-center gap-1 shadow-2xs" title="Credencial criptográfica JWT con firma HMAC-SHA256 activa">
-              <i data-lucide="shield-check" className="w-3 h-3 text-emerald-600"></i>
-              <span>JWT HS256 ACTIVO</span>
-            </span>
-          ) : (
+          {!currentUser && (
             <button
               type="button"
               onClick={onOpenLogin}
-              className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition"
+              className="px-2.5 py-1 rounded-lg bg-white hover:bg-orange-50 text-slate-700 hover:text-[#f25019] text-[10.5px] font-bold border border-orange-200/80 transition"
             >
               Iniciar Sesión
             </button>
@@ -2125,11 +2115,11 @@ function TripFeed({ trips, filters, onFilterChange, onBookTrip, onOpenPublish, o
                   ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-amber-600 shadow-sm ring-2 ring-amber-300' 
                   : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
               }`}
-              title={`Filtrar rutas que coincidan con tu zona residencial: ${currentUser.residential_zone} (HU-03)`}
+              title={`Filtrar rutas que coincidan con tu zona residencial: ${currentUser.residential_zone}`}
             >
               <span>🎯</span>
               <span>Mis Coincidencias ({currentUser.residential_zone.split(' ')[0]})</span>
-              <span className="text-[10px] px-1.5 py-0.2 bg-amber-200/80 text-amber-950 rounded-full font-extrabold">HU-03</span>
+              
             </button>
           )}
         </div>
@@ -2403,7 +2393,7 @@ function TripCard({ trip, currentUser, onBookTrip, bookings, onShareWhatsApp, is
               <span className="text-amber-600 text-sm">🎯</span>
               <span className="truncate">Coincide con tu zona residencial: <strong>{currentUser.residential_zone}</strong></span>
             </div>
-            <span className="text-[10px] bg-amber-200/90 text-amber-950 px-2 py-0.5 rounded-full font-extrabold shrink-0 ml-1.5">HU-03</span>
+            
           </div>
         )}
 
@@ -2743,7 +2733,7 @@ function AuthLoginModal({ isOpen, onClose, onLogin, onSwitchToRegister, currentU
                 <i data-lucide="key" className="w-3 h-3 text-orange-500"></i>
                 Pruebas rápidas:
               </span>
-              <span className="text-[10px] text-emerald-700 font-mono font-bold">🔒 JWT HS256</span>
+              <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1"><i data-lucide="shield-check" className="w-3 h-3 text-emerald-600"></i> Acceso Seguro</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
               <button
@@ -2987,7 +2977,7 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
 
     // Generar Token JWT Seguro (HS256 con 8 horas de validez)
     const token = JWTService.sign(user, 8);
-    addToast(`¡Identidad confirmada con éxito (HU-02)! Cuenta activada para ${fullName}.`, 'success');
+    addToast(`¡Identidad confirmada con éxito ! Cuenta activada para ${fullName}.`, 'success');
     onRegister(user, token);
   };
 
@@ -3020,7 +3010,7 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
                 Crea tu cuenta en RutaU
               </h1>
               <p className="text-xs text-slate-500 mb-4 font-medium">
-                Completa tu perfil institucional (HU-03) y valida tu vinculación activa por código (HU-02).
+                Completa tu perfil institucional y valida tu vinculación activa por código.
               </p>
 
               {/* Banner de Aviso en Registro */}
@@ -3140,7 +3130,7 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between">
                       <span>Facultad / Carrera</span>
-                      <span className="text-[9px] font-bold text-orange-600">HU-03</span>
+                      
                     </label>
                     <select 
                       value={faculty} 
@@ -3161,7 +3151,7 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between">
                       <span>Zona Residencial</span>
-                      <span className="text-[9px] font-bold text-orange-600">HU-03</span>
+                      
                     </label>
                     <select 
                       value={residentialZone} 
@@ -3277,7 +3267,7 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
                   className="btn-primary-orange w-full py-2.5 rounded-lg text-white font-bold text-xs shadow-md mt-2 flex items-center justify-center gap-2 active:scale-95"
                 >
                   <i data-lucide="shield-check" className="w-3.5 h-3.5"></i>
-                  <span>Continuar con Verificación de Identidad (HU-02)</span>
+                  <span>Continuar con Verificación de Identidad</span>
                   <i data-lucide="arrow-right" className="w-3.5 h-3.5"></i>
                 </button>
               </form>
@@ -3300,7 +3290,7 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
             <div className="space-y-4 py-1">
               <div className="flex items-center gap-2 mb-1">
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300">
-                  HU-02 • Épica EP-01
+                  Verificación Institucional
                 </span>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
                   Vinculación Activa
@@ -3385,7 +3375,7 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
                 className="btn-primary-orange w-full py-3 rounded-xl text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95"
               >
                 <i data-lucide="check-circle-2" className="w-4 h-4"></i>
-                <span>Activar Cuenta y Confirmar Vinculación (HU-02)</span>
+                <span>Activar Cuenta y Confirmar Vinculación</span>
               </button>
 
               <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
@@ -3503,14 +3493,12 @@ function InstitutionalProfileModal({ isOpen, onClose, currentUser, onUpdateProfi
               <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Mi Perfil Institucional
               </h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300">
-                HU-03 • EP-01
-              </span>
+              
             </div>
             <p className="text-xs text-slate-500 mt-0.5 font-medium flex items-center gap-1.5 flex-wrap">
               <span className="text-emerald-700 font-semibold flex items-center gap-1">
                 <i data-lucide="shield-check" className="w-3.5 h-3.5 text-emerald-600"></i>
-                Vinculación Activa Verificada (HU-02)
+                Vinculación Activa Verificada
               </span>
               <span>•</span>
               <span>I.U. Pascual Bravo</span>
@@ -3554,7 +3542,7 @@ function InstitutionalProfileModal({ isOpen, onClose, currentUser, onUpdateProfi
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
                 <span>Facultad / Programa Académico *</span>
-                <span className="text-[10px] font-bold text-orange-600">HU-03</span>
+                
               </label>
               <select 
                 value={faculty} 
@@ -3590,7 +3578,7 @@ function InstitutionalProfileModal({ isOpen, onClose, currentUser, onUpdateProfi
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-bold text-slate-900 flex items-center gap-1.5">
                 <i data-lucide="map-pin" className="w-4 h-4 text-orange-600"></i>
-                <span>Zona Residencial de Destino Habitual * (HU-03)</span>
+                <span>Zona Residencial de Destino Habitual *</span>
               </label>
               <span className="text-[10px] bg-orange-100 text-orange-900 px-2 py-0.5 rounded-full font-bold">
                 Coincidencias Automáticas
@@ -3613,7 +3601,7 @@ function InstitutionalProfileModal({ isOpen, onClose, currentUser, onUpdateProfi
               <option value="Calasanz / Floresta">Calasanz / Ferrini / Floresta</option>
             </select>
             <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
-              🎯 <strong>Criterio HU-03:</strong> Al configurar tu zona residencial, la cartelera nocturna destacará automáticamente trayectos hacia tu barrio con el badge <span className="text-orange-700 font-bold">"Coincide con tu zona residencial"</span> y te permitirá filtrarlos en un clic.
+              🎯 <strong>Coincidencia de ruta:</strong> Al configurar tu zona residencial, la cartelera nocturna destacará automáticamente trayectos hacia tu barrio con el badge <span className="text-orange-700 font-bold">"Coincide con tu zona residencial"</span> y te permitirá filtrarlos en un clic.
             </p>
           </div>
 
@@ -3694,7 +3682,7 @@ function InstitutionalProfileModal({ isOpen, onClose, currentUser, onUpdateProfi
               className="btn-primary-orange px-6 py-2.5 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-2 active:scale-95"
             >
               <i data-lucide="save" className="w-4 h-4"></i>
-              <span>Guardar Perfil Institucional (HU-03)</span>
+              <span>Guardar Perfil Institucional</span>
             </button>
           </div>
         </form>
@@ -4354,7 +4342,7 @@ function DigitalReceiptModal({ isOpen, onClose, booking, trip, currentUser, onSh
             <i data-lucide="receipt" className="w-6 h-6"></i>
           </div>
           <h3 className="text-lg font-black text-slate-900 tracking-tight">Comprobante Digital RutaU</h3>
-          <p className="text-[11px] text-slate-500 font-medium">Institución Universitaria Pascual Bravo • HU-08 &amp; HU-09</p>
+          <p className="text-[11px] text-slate-500 font-medium">Institución Universitaria Pascual Bravo</p>
           <span className="inline-block mt-2 px-3 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10.5px] font-bold">
             Aporte Solidario de Combustible
           </span>
@@ -4453,7 +4441,7 @@ function ReviewRatingModal({ isOpen, onClose, targetUser, onSubmitReview, addToa
       });
     }
     if (addToast) {
-      addToast(`¡Calificación de ${rating} estrellas guardada para ${targetUser.name}! Fortalece la confianza comunitaria (HU-10).`, 'success');
+      addToast(`¡Calificación de ${rating} estrellas guardada para ${targetUser.name}! Fortalece la confianza comunitaria.`, 'success');
     }
     onClose();
   };
@@ -4474,7 +4462,7 @@ function ReviewRatingModal({ isOpen, onClose, targetUser, onSubmitReview, addToa
           </div>
           <div>
             <h3 className="text-base font-extrabold text-slate-900 leading-tight">Calificación Comunitaria</h3>
-            <span className="text-[11px] text-slate-500 font-medium">Evalúa a {targetUser.name} • HU-10</span>
+            <span className="text-[11px] text-slate-500 font-medium">Evalúa a {targetUser.name}</span>
           </div>
         </div>
 
@@ -4614,7 +4602,7 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                     <button 
                       onClick={() => setSelectedReceiptData({ booking: b, trip })}
                       className="flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200"
-                      title="Ver Comprobante Digital con cálculo de ahorro (HU-08 & HU-09)"
+                      title="Ver Comprobante Digital"
                     >
                       <i data-lucide="receipt" className="w-3.5 h-3.5"></i>
                       <span>Comprobante</span>
@@ -4623,7 +4611,7 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                       <button 
                         onClick={() => setReviewTargetUser({ id: trip.driver_id, name: trip.driver_name })}
                         className="py-2 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-amber-200"
-                        title="Calificar Conductor (HU-10)"
+                        title="Calificar Conductor"
                       >
                         <i data-lucide="star" className="w-3.5 h-3.5 fill-amber-500 text-amber-500"></i>
                         <span>Calificar</span>
@@ -4686,7 +4674,7 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                   <button 
                     onClick={() => setSelectedReceiptData({ booking: { id: `RUTAU-PUB-${t.id}`, passenger_name: 'Cupos Asignados', stop_requested: null }, trip: t })}
                     className="flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200"
-                    title="Ver desglose y aporte de gasolina del trayecto (HU-08)"
+                    title="Ver Desglose de Gasolina"
                   >
                     <i data-lucide="receipt" className="w-3.5 h-3.5"></i>
                     <span>Ver Aporte Gasolina</span>

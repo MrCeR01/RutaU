@@ -342,7 +342,7 @@ function renderFeedView(container) {
   });
 
   container.innerHTML = `
-    <!-- Banner Campus Pascual Bravo & Seguridad Nocturna -->
+    
     <div class="glass-panel p-5 mb-6 relative overflow-hidden">
       <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -370,7 +370,7 @@ function renderFeedView(container) {
         </div>
       </div>
 
-      <!-- Filtros de búsqueda (CA-07) -->
+      
       <div class="mt-6 pt-5 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label class="block text-xs font-medium text-slate-400 mb-1 flex items-center gap-1">
@@ -410,7 +410,7 @@ function renderFeedView(container) {
       </div>
     </div>
 
-    <!-- Lista de Viajes Disponibles -->
+    
     <div class="mb-4 flex items-center justify-between">
       <h2 class="text-lg font-bold text-white flex items-center gap-2">
         <i data-lucide="compass" class="w-5 h-5 text-emerald-400"></i>
@@ -436,7 +436,7 @@ function renderTripCard(trip) {
   const taxiEstimate = Math.round(trip.suggested_seat_price * 4.2);
   const savingsPercent = Math.round(((taxiEstimate - trip.suggested_seat_price) / taxiEstimate) * 100);
 
-  // Coincidencia con zona residencial del usuario (HU-03)
+  // Coincidencia con zona residencial del usuario 
   const user = RUTA_U_STATE.currentUser;
   const userZone = user?.residential_zone ? user.residential_zone.toLowerCase() : '';
   const matchesMyZone = Boolean(
@@ -451,7 +451,7 @@ function renderTripCard(trip) {
   return `
     <div class="glass-panel p-5 flex flex-col justify-between hover:border-slate-600 transition group relative">
       <div>
-        <!-- Cabecera del Conductor -->
+        
         <div class="flex items-start justify-between gap-3 mb-3">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-emerald-400">
@@ -472,7 +472,7 @@ function renderTripCard(trip) {
             </div>
           </div>
 
-          <!-- Cupos Badge -->
+          
           <div class="text-right">
             <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isFull ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'} flex items-center gap-1">
               <i data-lucide="users" className="w-3.5 h-3.5"></i>
@@ -487,11 +487,11 @@ function renderTripCard(trip) {
               <span>🎯</span>
               <span>Coincide con tu zona residencial (${user.residential_zone})</span>
             </span>
-            <span class="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-extrabold">HU-03</span>
+            
           </div>
         ` : ''}
 
-        <!-- Ruta y Punto de Encuentro -->
+        
         <div class="space-y-2.5 my-4 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
           <div class="flex items-start gap-2.5 text-xs">
             <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400 shrink-0 mt-0.5"></i>
@@ -518,7 +518,7 @@ function renderTripCard(trip) {
           </div>
         </div>
 
-        <!-- Módulo de Cuota de Gasolina Equitativa (HU-08, HU-09) -->
+        
         <div class="p-3 bg-emerald-950/20 border border-emerald-800/40 rounded-xl mb-4">
           <div class="flex items-center justify-between text-xs">
             <div>
@@ -533,9 +533,9 @@ function renderTripCard(trip) {
         </div>
       </div>
 
-      <!-- Botones de Acción (CA-09, CA-10, CA-25) -->
+      
       <div class="pt-2 border-t border-slate-800 flex items-center gap-2">
-        <button onclick="shareTripOnWhatsApp('${trip.id}')" class="p-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 rounded-lg transition" title="Compartir trayecto por WhatsApp (HU-13)">
+        <button onclick="shareTripOnWhatsApp('${trip.id}')" class="p-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 rounded-lg transition" title="Compartir trayecto por WhatsApp ">
           <i data-lucide="share-2" class="w-4 h-4"></i>
         </button>
 
@@ -623,7 +623,7 @@ function renderPublishTripView(container) {
       </div>
 
       <form id="publish-trip-form" onsubmit="handlePublishTrip(event)" class="space-y-4">
-        <!-- Punto de Encuentro en Campus -->
+        
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
             <i data-lucide="map-pin" class="w-4 h-4 text-emerald-400"></i> Punto de Encuentro Seguro en el Campus *
@@ -636,7 +636,7 @@ function renderPublishTripView(container) {
           </select>
         </div>
 
-        <!-- Zona y Dirección Destino -->
+        
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
@@ -661,7 +661,7 @@ function renderPublishTripView(container) {
           </div>
         </div>
 
-        <!-- Horario y Cupos -->
+        
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
@@ -688,7 +688,7 @@ function renderPublishTripView(container) {
           </div>
         </div>
 
-        <!-- Vehículo -->
+        
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center gap-1.5">
             <i data-lucide="truck" class="w-4 h-4 text-slate-400"></i> Vehículo (Modelo, Placa, Color) *
@@ -696,11 +696,11 @@ function renderPublishTripView(container) {
           <input type="text" id="vehicle-input" required value="${user.vehicle ? `${user.vehicle.brand} • ${user.vehicle.plate} • ${user.vehicle.color}` : 'Chevrolet Onix • Gris • PBV-202'}" class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500" />
         </div>
 
-        <!-- Tarjeta de Cálculo Automático de Gasolina (HU-08) -->
+        
         <div id="gas-calc-preview" class="p-4 bg-slate-900/90 border border-slate-800 rounded-2xl">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold text-slate-300 flex items-center gap-1">
-              <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Reparto Sugerido de Combustible (HU-08)
+              <i data-lucide="calculator" class="w-4 h-4 text-emerald-400"></i> Reparto Sugerido de Combustible 
             </span>
             <span class="text-[11px] text-emerald-400 font-semibold">Fórmula Pascual Bravo</span>
           </div>
@@ -719,7 +719,7 @@ function renderPublishTripView(container) {
           </p>
         </div>
 
-        <!-- Notas opcionales -->
+        
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1.5">Notas adicionales del viaje</label>
           <textarea id="notes-input" rows="2" placeholder="Ej: Espero máximo 10 minutos después de terminar clase. Espacio en el baúl disponible." class="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500 placeholder-slate-600"></textarea>
@@ -772,7 +772,7 @@ function handlePublishTrip(e) {
   const vehicleSummary = document.getElementById('vehicle-input').value.trim();
   const notes = document.getElementById('notes-input').value.trim();
 
-  // Validación de campos obligatorios (CA-12)
+  // Validación de campos obligatorios 
   if (!meetingPoint || !destinationZone || !departureTime || !seats) {
     showToast('Por favor completa todos los campos obligatorios.', 'error');
     return;
@@ -826,7 +826,7 @@ function requestSeatBooking(tripId) {
   const trip = trips.find(t => t.id === tripId);
   if (!trip) return;
 
-  // Validación de cupo disponible (CA-10)
+  // Validación de cupo disponible 
   if (trip.available_seats <= 0) {
     showToast('Lo sentimos, este viaje ya alcanzó el tope máximo de asientos.', 'warning');
     return;
@@ -993,7 +993,7 @@ function renderMyTripsView(container) {
         </div>
       </div>
 
-      <!-- Sección Conductor -->
+      
       <div>
         <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wider mb-3 flex items-center gap-2">
           <i data-lucide="car" class="w-4 h-4"></i> Trayectos que conduzco (${myDrivenTrips.length})
@@ -1007,7 +1007,7 @@ function renderMyTripsView(container) {
         `}
       </div>
 
-      <!-- Sección Pasajero -->
+      
       <div class="pt-6 border-t border-slate-800">
         <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider mb-3 flex items-center gap-2">
           <i data-lucide="ticket" class="w-4 h-4"></i> Mis Reservas como Pasajero (${myPassengerBookings.length})
@@ -1040,10 +1040,10 @@ function renderMyTripsView(container) {
                   <div class="flex items-center gap-2 w-full sm:w-auto">
                     ${b.status === 'aceptada' ? `
                       <button onclick="openReceiptModal('${b.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white rounded-lg transition flex items-center gap-1.5">
-                        <i data-lucide="receipt" class="w-3.5 h-3.5 text-emerald-400"></i> Comprobante (CA-18)
+                        <i data-lucide="receipt" class="w-3.5 h-3.5 text-emerald-400"></i> Comprobante 
                       </button>
                       <button onclick="openReviewModal('${trip ? trip.driver_id : ''}', '${trip ? trip.driver_name : ''}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white rounded-lg transition flex items-center gap-1.5">
-                        <i data-lucide="star" class="w-3.5 h-3.5 text-amber-300 fill-amber-300"></i> Calificar (HU-10)
+                        <i data-lucide="star" class="w-3.5 h-3.5 text-amber-300 fill-amber-300"></i> Calificar 
                       </button>
                     ` : ''}
                   </div>
@@ -1135,7 +1135,7 @@ function openReviewModal(targetUserId, targetUserName) {
       <div class="glass-panel w-full max-w-md p-6 bg-slate-900 border border-slate-700 rounded-2xl">
         <div class="flex items-center justify-between pb-3 border-b border-slate-800">
           <div>
-            <h3 class="text-base font-bold text-white">Calificación Comunitaria (HU-10)</h3>
+            <h3 class="text-base font-bold text-white">Calificación Comunitaria </h3>
             <p class="text-xs text-slate-400">Evalúa a ${targetUserName || 'tu compañero de viaje'}</p>
           </div>
           <button onclick="closeModal('review-modal')" class="p-2 text-slate-400 hover:text-white rounded-lg">
@@ -1144,7 +1144,7 @@ function openReviewModal(targetUserId, targetUserName) {
         </div>
 
         <form onsubmit="handleReviewSubmit(event, '${targetUserId}')" class="space-y-4 my-4">
-          <!-- Estrellas (1-5) -->
+          
           <div class="text-center py-2">
             <label class="block text-xs font-semibold text-slate-300 mb-2">Puntuación General</label>
             <div class="flex items-center justify-center gap-2 text-2xl" id="star-rating-container">
@@ -1157,7 +1157,7 @@ function openReviewModal(targetUserId, targetUserName) {
             <span id="star-text" class="text-xs text-amber-400 font-bold block mt-1">5 de 5 estrellas</span>
           </div>
 
-          <!-- Métricas específicas -->
+          
           <div class="grid grid-cols-2 gap-3 text-xs">
             <div>
               <label class="block text-slate-400 mb-1">Puntualidad en salida</label>
@@ -1268,7 +1268,7 @@ function openSosModal() {
           Conexión inmediata con la Central de Seguridad y Bienestar Pascual Bravo.
         </p>
 
-        <!-- Temporizador de 5 segundos para cancelar falsa alarma (CA-22) -->
+        
         <div class="p-4 bg-slate-950/80 rounded-2xl border border-rose-500/30 my-4">
           <div class="text-xs text-slate-400 mb-1">Transmitiendo señal de auxilio en:</div>
           <div id="sos-timer-number" class="text-4xl font-extrabold text-rose-500 tracking-wider">5s</div>
@@ -1378,7 +1378,7 @@ function renderCampusSecurityView(container) {
 
       <div class="space-y-4">
         <h3 class="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-          <i data-lucide="radio" class="w-4 h-4 text-emerald-400"></i> Bitácora de Alertas Recibidas (CA-23)
+          <i data-lucide="radio" class="w-4 h-4 text-emerald-400"></i> Bitácora de Alertas Recibidas 
         </h3>
 
         ${alerts.length === 0 ? `
@@ -1410,7 +1410,7 @@ function renderCampusSecurityView(container) {
                 ${a.status === 'activa' ? `
                   <div class="flex items-center gap-2 w-full md:w-auto">
                     <button onclick="handleAcknowledgeSos('${a.id}')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5">
-                      <i data-lucide="phone-call" class="w-4 h-4"></i> Atender y Desplegar Patrulla (CA-24)
+                      <i data-lucide="phone-call" class="w-4 h-4"></i> Atender y Desplegar Patrulla 
                     </button>
                   </div>
                 ` : `
@@ -1515,7 +1515,7 @@ function openAuthModal() {
           </div>
 
           <div>
-            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ingresa Código de 6 Dígitos (CA-03)</label>
+            <label class="block text-xs font-semibold text-slate-300 mb-1.5">Ingresa Código de 6 Dígitos </label>
             <input 
               type="text" 
               id="auth-code-input" 
@@ -1560,7 +1560,7 @@ function handleVerifyCode() {
 
   // Validación del código (CA-03, CA-04)
   if (code !== '123456' && code.length !== 6) {
-    showToast('Código inválido o expirado. Verifícalo en tu correo institucional (CA-04).', 'error');
+    showToast('Código inválido o expirado. Verifícalo en tu correo institucional .', 'error');
     return;
   }
 
@@ -1678,7 +1678,7 @@ function renderProfileView(container) {
           </div>
         </div>
 
-        <!-- Formulario de actualización de perfil (CA-05, CA-06) -->
+        
         <form onsubmit="handleUpdateProfile(event)" class="space-y-4 my-6">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -1697,11 +1697,11 @@ function renderProfileView(container) {
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Facultad / Carrera * (CA-05)</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Facultad / Carrera * </label>
               <input type="text" id="profile-faculty" required value="${user.faculty}" placeholder="Ej: Tecnología en Desarrollo de Software" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500" />
             </div>
             <div>
-              <label class="block text-xs font-semibold text-slate-300 mb-1">Zona Residencial Destino * (CA-05)</label>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">Zona Residencial Destino * </label>
               <input type="text" id="profile-zone" required value="${user.residential_zone}" placeholder="Ej: Bello, Laureles, Castilla" class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500" />
             </div>
           </div>
@@ -1712,11 +1712,11 @@ function renderProfileView(container) {
           </div>
 
           <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition">
-            Guardar Cambios de Perfil (CA-05)
+            Guardar Cambios de Perfil 
           </button>
         </form>
 
-        <!-- Reseñas recibidas -->
+        
         <div class="pt-6 border-t border-slate-800">
           <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
             <i data-lucide="message-square" class="w-4 h-4 text-emerald-400"></i>
@@ -1756,9 +1756,9 @@ function handleUpdateProfile(e) {
   const zone = document.getElementById('profile-zone').value.trim();
   const phone = document.getElementById('profile-phone').value.trim();
 
-  // Validación de obligatoriedad (CA-06)
+  // Validación de obligatoriedad 
   if (!name || !faculty || !zone) {
-    showToast('Error: Nombre, Facultad y Zona Residencial son obligatorios (CA-06).', 'error');
+    showToast('Error: Nombre, Facultad y Zona Residencial son obligatorios .', 'error');
     return;
   }
 
