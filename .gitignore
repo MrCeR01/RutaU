@@ -1,0 +1,16 @@
+# Entornos y dependencias
+node_modules/
+.env
+.env.local
+.env.*.local
+
+# Archivos de configuración de agentes / IDE
+.agents/
+.vscode/
+.idea/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp

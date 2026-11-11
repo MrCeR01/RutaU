@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>RutaU | Carpooling Universitario Seguro - Pascual Bravo</title>
+  
+  <!-- Favicon Oficial RutaU -->
+  <link rel="icon" type="image/png" href="assets/logo_icon.png" />
+
+  <!-- Google Fonts: Inter, Poppins, DM Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@500;700;800&family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              200: '#fed7aa',
+              500: '#f25019',
+              600: '#ea580c',
+              700: '#c2410c',
+            },
+            emerald: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            poppins: ['Poppins', 'sans-serif'],
+            dm: ['DM Sans', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- React 18 & ReactDOM 18 (Local con fallback a CDN) -->
+  <script src="assets/react.production.min.js"></script>
+  <script>window.React || document.write('<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"><\/script>')</script>
+  <script src="assets/react-dom.production.min.js"></script>
+  <script>window.ReactDOM || document.write('<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"><\/script>')</script>
+
+  <!-- Supabase Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Leaflet Maps CSS & JS (Local con fallback a CDN) -->
+  <link rel="stylesheet" href="assets/leaflet.css" />
+  <script src="assets/leaflet.js"></script>
+  <script>window.L || document.write('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>')</script>
+
+  <!-- Estilos de Diseño Elevado (Tokens, Marcadores de Campus y Paradas Intermedias) -->
+  <link rel="stylesheet" href="styles.css?v=2.2" />
+</head>
+<body class="bg-[#fdf8f5] text-slate-800 min-h-screen antialiased selection:bg-orange-500/20 selection:text-orange-900">
+
+  <!-- Contenedor Raíz de la Aplicación React 18 -->
+  <div id="root"></div>
+
+  <!-- Motor React de la Aplicación RutaU (Componentes, Hooks y Estado en su carpeta RutaU_React) -->
+  <script src="RutaU_React/app.js?v=2.2"></script>
+</body>
+</html>

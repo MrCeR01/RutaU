@@ -1,0 +1,21 @@
+{
+  "name": "rutau-carpooling",
+  "version": "1.0.0",
+  "description": "RutaU - Red Universitaria de Carpooling Nocturno Seguro y Colaborativo (Institución Universitaria Pascual Bravo)",
+  "main": "app.js",
+  "scripts": {
+    "build": "node build_react.js",
+    "start": "npx serve . -p 3000",
+    "dev": "node build_react.js && npx serve . -p 3000"
+  },
+  "keywords": [
+    "carpooling",
+    "pascual-bravo",
+    "supabase",
+    "universidad",
+    "movilidad-segura"
+  ],
+  "author": "Joveidy Villarreal & Cristian Guzmán",
+  "license": "MIT"
+}
+
