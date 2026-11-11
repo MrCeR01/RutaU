@@ -564,6 +564,14 @@ function RutaUApp() {
     } catch (e) {}
     addToast(`Perfil institucional actualizado: ${updatedUser.full_name} (${updatedUser.residential_zone}).`, 'success');
   };
+  const handleSwitchDemoUser = userId => {
+    const user = registeredUsers.find(u => u.id === userId) || DEFAULT_SEED_DATA.users.find(u => u.id === userId);
+    if (!user) return;
+    const token = JWTService.sign(user, 8);
+    handleLogin(user, token);
+    const roleLabel = user.role === 'conductor' ? `Conductor (${user.vehicle?.brand || 'Vehículo'})` : `Pasajera (${user.faculty})`;
+    addToast(`Modo Demostración: Sesión activa como ${user.full_name} [${roleLabel}].`, 'success');
+  };
   const handleLogout = () => {
     setJwtToken(null);
     setCurrentUser(null);
@@ -720,7 +728,14 @@ function RutaUApp() {
     onOpenSupabase: () => setIsSupabaseModalOpen(true),
     onLogout: handleLogout
   }), /*#__PURE__*/React.createElement(StatusBar, {
-    jwtToken: jwtToken
+    jwtToken: jwtToken,
+    currentUser: currentUser,
+    onSwitchDemoUser: handleSwitchDemoUser,
+    onOpenRegister: () => setIsRegisterModalOpen(true),
+    onOpenProfile: () => {
+      if (!currentUser) setIsLoginModalOpen(true);else setIsProfileModalOpen(true);
+    },
+    onOpenLogin: () => setIsLoginModalOpen(true)
   }), /*#__PURE__*/React.createElement("main", {
     className: "flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6"
   }, activeTab === 'feed' && /*#__PURE__*/React.createElement(TripFeed, {
@@ -737,7 +752,8 @@ function RutaUApp() {
     onOpenSos: () => setIsSosModalOpen(true),
     currentUser: currentUser,
     bookings: bookings,
-    onShareWhatsApp: shareTripOnWhatsApp
+    onShareWhatsApp: shareTripOnWhatsApp,
+    addToast: addToast
   }), activeTab === 'publish' && /*#__PURE__*/React.createElement(PublishView, {
     currentUser: currentUser,
     onPublish: handlePublishTrip,
@@ -1095,6 +1111,7 @@ function Navbar({
   currentUser,
   jwtToken,
   onOpenLogin,
+  onOpenRegister,
   onOpenSupabase,
   onLogout,
   onOpenProfile
@@ -1203,7 +1220,16 @@ function Navbar({
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "log-out",
     className: "w-4 h-4"
-  }))) : /*#__PURE__*/React.createElement("button", {
+  }))) : /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onOpenRegister,
+    className: "hidden sm:flex px-3.5 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold border border-orange-200 transition active:scale-95 items-center gap-1.5",
+    title: "Registrarse con c\xF3digo de verificaci\xF3n OTP (HU-02)"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "user-plus",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "Registrarse (HU-02)")), /*#__PURE__*/React.createElement("button", {
     onClick: onOpenLogin,
     className: "px-4 py-2 rounded-xl bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold shadow-md shadow-orange-500/25 transition active:scale-95 flex items-center gap-2"
   }, /*#__PURE__*/React.createElement("i", {
@@ -1212,43 +1238,79 @@ function Navbar({
   }), /*#__PURE__*/React.createElement("span", null, "Iniciar Sesi\xF3n"), /*#__PURE__*/React.createElement("i", {
     "data-lucide": "arrow-right",
     className: "w-3.5 h-3.5"
-  })))));
+  }))))));
 }
 
 // ==========================================================================
 // 3. COMPONENTE: StatusBar (Barra de Estado Institucional)
 // ==========================================================================
 function StatusBar({
-  jwtToken
+  jwtToken,
+  currentUser,
+  onSwitchDemoUser,
+  onOpenRegister,
+  onOpenProfile,
+  onOpenLogin
 }) {
   return /*#__PURE__*/React.createElement("div", {
-    className: "bg-[#fff8f5] border-b border-orange-200/50 px-4 py-1.5 text-[11.5px] text-slate-600"
+    className: "bg-[#fff9f5] border-b border-orange-200/60 px-4 py-2 text-[11.5px] text-slate-700 shadow-xs"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2"
+    className: "max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2.5"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2"
+    className: "flex items-center gap-2 flex-wrap"
   }, /*#__PURE__*/React.createElement("span", {
-    className: "w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+    className: "w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"
   }), /*#__PURE__*/React.createElement("span", {
-    className: "font-semibold text-slate-800"
-  }, "RutaU Pascual Bravo:"), /*#__PURE__*/React.createElement("span", null, "Red Universitaria de Movilidad Segura \u2022 Campus Robledo y Sede C4TA San Javier")), /*#__PURE__*/React.createElement("div", {
-    className: "hidden md:flex items-center gap-3 text-[11px] text-slate-500"
-  }, jwtToken ? /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-bold text-[10px] flex items-center gap-1"
+    className: "font-extrabold text-slate-900 tracking-tight"
+  }, "RutaU Pascual Bravo:"), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-600 hidden sm:inline"
+  }, "Red de Movilidad Universitaria Segura \u2022 Campus Robledo & Sede C4TA San Javier"), /*#__PURE__*/React.createElement("span", {
+    className: "px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[10px] font-bold border border-orange-200"
+  }, "Salidas 21:00+")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5 flex-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1 bg-white/95 px-2 py-1 rounded-xl border border-orange-200/90 shadow-2xs"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] font-extrabold text-orange-950 uppercase tracking-wider mr-1 flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83C\uDF93"), " Demo:"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => onSwitchDemoUser && onSwitchDemoUser('usr-1'),
+    className: `px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition active:scale-95 flex items-center gap-1 ${currentUser?.id === 'usr-1' ? 'bg-[#f25019] text-white shadow-xs' : 'bg-orange-50 text-slate-700 hover:bg-orange-100 border border-orange-100'}`,
+    title: "Demostraci\xF3n como Conductor: Cristian Guzm\xE1n (Chevrolet Onix \u2022 Destino Bello)"
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDE97 Conductor"), /*#__PURE__*/React.createElement("span", {
+    className: "hidden lg:inline text-[9.5px] opacity-90"
+  }, "(Cristian)")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => onSwitchDemoUser && onSwitchDemoUser('usr-2'),
+    className: `px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition active:scale-95 flex items-center gap-1 ${currentUser?.id === 'usr-2' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-100'}`,
+    title: "Demostraci\xF3n como Pasajera: Joveidy Villarreal (Residencia Robledo \u2022 Coincidencias HU-03)"
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83C\uDF92 Pasajera"), /*#__PURE__*/React.createElement("span", {
+    className: "hidden lg:inline text-[9.5px] opacity-90"
+  }, "(Joveidy)")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: onOpenRegister,
+    className: "px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 transition active:scale-95 flex items-center gap-1",
+    title: "Demostraci\xF3n de C\xF3digo OTP Institucional (HU-02)"
+  }, /*#__PURE__*/React.createElement("span", null, "\u2728 Probar OTP"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[9px] bg-amber-200 text-amber-950 px-1 rounded font-extrabold"
+  }, "HU-02")), currentUser && /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: onOpenProfile,
+    className: "px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 transition active:scale-95 flex items-center gap-1",
+    title: "Configuraci\xF3n de Perfil Institucional (HU-03)"
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83C\uDFAF Perfil"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[9px] bg-slate-200 text-slate-800 px-1 rounded font-extrabold"
+  }, "HU-03"))), jwtToken ? /*#__PURE__*/React.createElement("span", {
+    className: "px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-bold text-[10px] flex items-center gap-1 shadow-2xs",
+    title: "Credencial criptogr\xE1fica JWT con firma HMAC-SHA256 activa"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "shield-check",
     className: "w-3 h-3 text-emerald-600"
-  }), /*#__PURE__*/React.createElement("span", null, "JWT HS256 ACTIVO")) : /*#__PURE__*/React.createElement("span", {
-    className: "px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-medium"
-  }, "Sesi\xF3n Invitado"), /*#__PURE__*/React.createElement("span", {
-    className: "flex items-center gap-1"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-purple-600 font-bold"
-  }, "C4TA San Javier"), " \u2022 ", /*#__PURE__*/React.createElement("span", {
-    className: "text-emerald-600 font-bold"
-  }, "Robledo")), /*#__PURE__*/React.createElement("span", null, "\u2022"), /*#__PURE__*/React.createElement("span", {
-    className: "text-orange-600 font-semibold"
-  }, "Salidas desde las 21:00 hrs"))));
+  }), /*#__PURE__*/React.createElement("span", null, "JWT HS256 ACTIVO")) : /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: onOpenLogin,
+    className: "px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition"
+  }, "Iniciar Sesi\xF3n"))));
 }
 
 // ==========================================================================
@@ -1475,6 +1537,8 @@ function TripMapView({
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const tileLayerRef = useRef(null);
+  const [mapLayer, setMapLayer] = useState('streets'); // 'streets' | 'satellite'
   const markersRef = useRef({});
   const polylinesRef = useRef({});
   useEffect(() => {
@@ -1492,10 +1556,11 @@ function TripMapView({
       zoom: 12.5,
       zoomControl: true
     });
-    window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    const streetsLayer = window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
-      attribution: '© Esri • I.U. Pascual Bravo (Robledo & C4TA)'
+      attribution: '© Esri Streets • I.U. Pascual Bravo (Robledo & C4TA)'
     }).addTo(map);
+    tileLayerRef.current = streetsLayer;
 
     // Ajuste dinámico de tamaño para evitar franjas grises
     setTimeout(() => {
@@ -1589,6 +1654,21 @@ function TripMapView({
       }
     };
   }, []);
+
+  // Alternar capa de mapa: Callejero Esri vs Fotografía Satelital de Alta Resolución
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !window.L) return;
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+    const url = mapLayer === 'satellite' ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+    const layer = window.L.tileLayer(url, {
+      maxZoom: 19,
+      attribution: mapLayer === 'satellite' ? '© Esri World Imagery • I.U. Pascual Bravo' : '© Esri Streets • I.U. Pascual Bravo'
+    }).addTo(map);
+    tileLayerRef.current = layer;
+  }, [mapLayer]);
 
   // Actualizar marcadores, paradas intermedias y polylines cuando cambian los viajes o selectedTripId
   useEffect(() => {
@@ -1781,6 +1861,10 @@ function TripMapView({
   }), /*#__PURE__*/React.createElement("span", null, trips.length, " Rutas en Tiempo Real"))), /*#__PURE__*/React.createElement("div", {
     className: "absolute top-3 right-3 z-[400] flex items-center gap-1.5 flex-wrap justify-end"
   }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setMapLayer(prev => prev === 'streets' ? 'satellite' : 'streets'),
+    className: `px-2.5 py-1.5 rounded-xl border shadow-md transition active:scale-95 text-xs font-bold flex items-center gap-1.5 ${mapLayer === 'satellite' ? 'bg-slate-900 text-white border-slate-700' : 'bg-white/95 hover:bg-white text-slate-700 hover:text-orange-600 border-orange-200'}`,
+    title: mapLayer === 'satellite' ? 'Cambiar a mapa vial vectorial' : 'Cambiar a fotografía satelital de alta resolución (Esri)'
+  }, /*#__PURE__*/React.createElement("span", null, "$", mapLayer === 'satellite' ? '🛰️ Satélite HD' : '🗺️ Calles')), /*#__PURE__*/React.createElement("button", {
     onClick: handleCenterRobledo,
     className: "px-2.5 py-1.5 bg-white/95 hover:bg-white text-slate-700 hover:text-emerald-700 rounded-xl border border-emerald-200 shadow-md transition active:scale-95 text-xs font-bold flex items-center gap-1.5",
     title: "Centrar en Campus Robledo"
@@ -1999,20 +2083,39 @@ function TripFeed({
     "data-lucide": "map",
     className: "w-3.5 h-3.5"
   }), /*#__PURE__*/React.createElement("span", null, "Solo Mapa")))), filteredTrips.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    className: "glass-panel p-8 text-center my-6 bg-white border border-orange-200/60 shadow-sm"
+    className: "glass-panel p-8 text-center my-6 bg-white border border-orange-200/60 shadow-sm rounded-3xl"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#f25019]"
+    className: "w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#f25019] border border-orange-200"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "search-x",
     className: "w-7 h-7"
   })), /*#__PURE__*/React.createElement("h3", {
     className: "text-base font-bold text-slate-900 mb-1"
-  }, "No se encontraron trayectos activos"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-600 max-w-md mx-auto"
-  }, "No hay conductores hacia esa zona para el horario seleccionado. Puedes ser el primero en publicar una ruta colaborativa."), /*#__PURE__*/React.createElement("button", {
+  }, "No se encontraron trayectos activos con esos filtros"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-600 max-w-md mx-auto mb-4"
+  }, "No hay conductores hacia esa zona o facultad en el horario seleccionado. Puedes restablecer los filtros para ver todas las rutas o publicar una nueva."), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-center gap-2.5 flex-wrap"
+  }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => {
+      onFilterChange('zone', '');
+      onFilterChange('faculty', '');
+      onFilterChange('time', '');
+      onFilterChange('campus', '');
+      onFilterChange('onlyMyZone', false);
+    },
+    className: "px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition active:scale-95 flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "rotate-ccw",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "Restablecer Filtros")), /*#__PURE__*/React.createElement("button", {
+    type: "button",
     onClick: onOpenPublish,
-    className: "mt-4 px-5 py-2.5 bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold rounded-xl transition shadow-md shadow-orange-500/20 active:scale-95"
-  }, "Publicar este Trayecto")) : /*#__PURE__*/React.createElement(React.Fragment, null, viewMode === 'cards' && /*#__PURE__*/React.createElement("div", {
+    className: "px-5 py-2 bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold rounded-xl transition shadow-md shadow-orange-500/20 active:scale-95 flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "plus-circle",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "Publicar este Trayecto")))) : /*#__PURE__*/React.createElement(React.Fragment, null, viewMode === 'cards' && /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 md:grid-cols-2 gap-4"
   }, filteredTrips.map(trip => /*#__PURE__*/React.createElement(TripCard, {
     key: trip.id,
@@ -3825,6 +3928,235 @@ function BookingModal({
 }
 
 // ==========================================================================
+// ==========================================================================
+// 8.1. COMPONENTE: DigitalReceiptModal (Comprobante Digital y Amortización HU-08/HU-09)
+// ==========================================================================
+function DigitalReceiptModal({
+  isOpen,
+  onClose,
+  booking,
+  trip,
+  currentUser,
+  onShareWhatsApp
+}) {
+  if (!isOpen || !booking) return null;
+  const currentTrip = trip || {};
+  const contribution = currentTrip.suggested_seat_price || 6000;
+  const taxiEstimate = Math.round(contribution * 4.2);
+  const savings = taxiEstimate - contribution;
+  const savingsPercent = Math.round(savings / taxiEstimate * 100);
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4 font-poppins"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-orange-200 my-auto text-slate-800"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "x",
+    className: "w-5 h-5"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "text-center pb-4 border-b border-dashed border-orange-200"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-12 h-12 rounded-2xl bg-orange-100 text-[#f25019] flex items-center justify-center mx-auto mb-2 font-bold shadow-sm"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "receipt",
+    className: "w-6 h-6"
+  })), /*#__PURE__*/React.createElement("h3", {
+    className: "text-lg font-black text-slate-900 tracking-tight"
+  }, "Comprobante Digital RutaU"), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-slate-500 font-medium"
+  }, "Instituci\xF3n Universitaria Pascual Bravo \u2022 HU-08 & HU-09"), /*#__PURE__*/React.createElement("span", {
+    className: "inline-block mt-2 px-3 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10.5px] font-bold"
+  }, "Aporte Solidario de Combustible")), /*#__PURE__*/React.createElement("div", {
+    className: "py-4 space-y-2.5 text-xs text-slate-600"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400"
+  }, "C\xF3digo de Reserva:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]"
+  }, booking.id || 'RUTAU-PB-001')), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400"
+  }, "Estudiante Pasajero:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-slate-900"
+  }, booking.passenger_name || currentUser?.full_name)), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400"
+  }, "Conductor Institucional:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-semibold text-slate-800"
+  }, currentTrip.driver_name || 'Compañero Conductor')), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400"
+  }, "Veh\xEDculo:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-medium text-slate-700"
+  }, currentTrip.vehicle_summary || 'Vehículo Registrado')), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400"
+  }, "Campus de Salida:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-emerald-700"
+  }, currentTrip.origin_campus === 'c4ta' ? '🏛️ Sede C4TA San Javier' : '🎓 Campus Robledo (Bloque 2)')), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-400"
+  }, "Destino Residencial:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-orange-600"
+  }, currentTrip.destination_zone)), booking.stop_requested && /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center p-2 bg-amber-50 rounded-xl border border-amber-200 text-amber-900"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-semibold"
+  }, "Parada Acordada:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-bold"
+  }, booking.stop_requested))), /*#__PURE__*/React.createElement("div", {
+    className: "py-3 px-4 bg-[#fff9f5] rounded-2xl border border-orange-200/80 mb-4 space-y-1.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center text-xs"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-500"
+  }, "Aporte sugerido de combustible:"), /*#__PURE__*/React.createElement("span", {
+    className: "font-extrabold text-[#f25019] text-base tabular-nums"
+  }, "$", contribution.toLocaleString('es-CO'), " COP")), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-orange-100"
+  }, /*#__PURE__*/React.createElement("span", null, "Tarifa comercial estimada (Taxi/App):"), /*#__PURE__*/React.createElement("span", {
+    className: "line-through tabular-nums"
+  }, "~$", taxiEstimate.toLocaleString('es-CO'), " COP")), /*#__PURE__*/React.createElement("div", {
+    className: "flex justify-between items-center text-xs font-bold text-emerald-700"
+  }, /*#__PURE__*/React.createElement("span", null, "Ahorro solidario generado:"), /*#__PURE__*/React.createElement("span", {
+    className: "tabular-nums"
+  }, "~$", savings.toLocaleString('es-CO'), " COP (", savingsPercent, "%)"))), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, currentTrip && onShareWhatsApp && /*#__PURE__*/React.createElement("button", {
+    onClick: () => onShareWhatsApp(currentTrip),
+    className: "flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition active:scale-95 flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "share-2",
+    className: "w-4 h-4"
+  }), /*#__PURE__*/React.createElement("span", null, "Compartir en WhatsApp")), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition active:scale-95"
+  }, "Cerrar"))));
+}
+
+// ==========================================================================
+// 8.2. COMPONENTE: ReviewRatingModal (Calificación Comunitaria 1-5 Estrellas HU-10)
+// ==========================================================================
+function ReviewRatingModal({
+  isOpen,
+  onClose,
+  targetUser,
+  onSubmitReview,
+  addToast
+}) {
+  const [rating, setRating] = useState(5);
+  const [punctuality, setPunctuality] = useState(5);
+  const [respect, setRespect] = useState(5);
+  const [comment, setComment] = useState('');
+  if (!isOpen || !targetUser) return null;
+  const handleSubmit = e => {
+    e.preventDefault();
+    if (onSubmitReview) {
+      onSubmitReview({
+        targetUserId: targetUser.id,
+        rating,
+        punctuality,
+        respect,
+        comment: comment.trim()
+      });
+    }
+    if (addToast) {
+      addToast(`¡Calificación de ${rating} estrellas guardada para ${targetUser.name}! Fortalece la confianza comunitaria (HU-10).`, 'success');
+    }
+    onClose();
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4 font-poppins"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-orange-200 my-auto text-slate-800"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "x",
+    className: "w-5 h-5"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3 pb-3 border-b border-orange-100 mb-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-sm shadow-sm"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "star",
+    className: "w-5 h-5 fill-amber-500 text-amber-500"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", {
+    className: "text-base font-extrabold text-slate-900 leading-tight"
+  }, "Calificaci\xF3n Comunitaria"), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] text-slate-500 font-medium"
+  }, "Eval\xFAa a ", targetUser.name, " \u2022 HU-10"))), /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleSubmit,
+    className: "space-y-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "text-center py-2 bg-[#fffaf7] p-3 rounded-2xl border border-orange-100"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold text-slate-700 mb-1.5"
+  }, "Puntuaci\xF3n General"), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-center gap-1.5 text-2xl"
+  }, [1, 2, 3, 4, 5].map(star => /*#__PURE__*/React.createElement("button", {
+    key: star,
+    type: "button",
+    onClick: () => setRating(star),
+    className: "transition transform hover:scale-125 focus:outline-none p-1"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "star",
+    className: `w-7 h-7 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`
+  })))), /*#__PURE__*/React.createElement("span", {
+    className: "text-xs text-amber-600 font-bold block mt-1"
+  }, rating, " de 5 estrellas")), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3 text-xs"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-700 font-bold mb-1"
+  }, "Puntualidad en salida"), /*#__PURE__*/React.createElement("select", {
+    value: punctuality,
+    onChange: e => setPunctuality(Number(e.target.value)),
+    className: "w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019]"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: 5
+  }, "Excelente (A tiempo)"), /*#__PURE__*/React.createElement("option", {
+    value: 4
+  }, "Buena (Espera corta)"), /*#__PURE__*/React.createElement("option", {
+    value: 3
+  }, "Regular"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-slate-700 font-bold mb-1"
+  }, "Convivencia y Respeto"), /*#__PURE__*/React.createElement("select", {
+    value: respect,
+    onChange: e => setRespect(Number(e.target.value)),
+    className: "w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019]"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: 5
+  }, "Excelente (Ambiente seguro)"), /*#__PURE__*/React.createElement("option", {
+    value: 4
+  }, "Bueno"), /*#__PURE__*/React.createElement("option", {
+    value: 3
+  }, "Aceptable")))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "block text-xs font-bold text-slate-700 mb-1"
+  }, "Comentario para la Comunidad (Opcional)"), /*#__PURE__*/React.createElement("textarea", {
+    rows: 3,
+    value: comment,
+    onChange: e => setComment(e.target.value),
+    placeholder: "Ej: Excelente viaje, puntual en porter\xEDa de Bloque 2 y manejo muy prudente.",
+    className: "w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019]"
+  })), /*#__PURE__*/React.createElement("button", {
+    type: "submit",
+    className: "w-full py-3 bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold rounded-xl transition shadow-md shadow-orange-500/25 active:scale-95 flex items-center justify-center gap-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "check-circle",
+    className: "w-4 h-4"
+  }), /*#__PURE__*/React.createElement("span", null, "Enviar Calificaci\xF3n Comunitaria")))));
+}
+
+// ==========================================================================
 // 8. COMPONENTE: MyTripsView (Mis Trayectos y Reservas)
 // ==========================================================================
 function MyTripsView({
@@ -3832,8 +4164,12 @@ function MyTripsView({
   bookings,
   currentUser,
   onOpenLogin,
-  onShareWhatsApp
+  onShareWhatsApp,
+  addToast
 }) {
+  const [selectedReceiptData, setSelectedReceiptData] = useState(null); // { booking, trip }
+  const [reviewTargetUser, setReviewTargetUser] = useState(null); // { id, name }
+
   if (!currentUser) {
     return /*#__PURE__*/React.createElement("div", {
       className: "glass-panel p-8 text-center my-8 max-w-lg mx-auto bg-white border border-orange-200"
@@ -3892,13 +4228,36 @@ function MyTripsView({
     }, /*#__PURE__*/React.createElement("i", {
       "data-lucide": "signpost",
       className: "w-3.5 h-3.5 text-amber-600 shrink-0"
-    }), /*#__PURE__*/React.createElement("span", null, "Tu parada: ", /*#__PURE__*/React.createElement("strong", null, b.stop_requested)))), trip && /*#__PURE__*/React.createElement("button", {
+    }), /*#__PURE__*/React.createElement("span", null, "Tu parada: ", /*#__PURE__*/React.createElement("strong", null, b.stop_requested)))), /*#__PURE__*/React.createElement("div", {
+      className: "mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setSelectedReceiptData({
+        booking: b,
+        trip
+      }),
+      className: "flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200",
+      title: "Ver Comprobante Digital con c\xE1lculo de ahorro (HU-08 & HU-09)"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "receipt",
+      className: "w-3.5 h-3.5"
+    }), /*#__PURE__*/React.createElement("span", null, "Comprobante")), trip && /*#__PURE__*/React.createElement("button", {
+      onClick: () => setReviewTargetUser({
+        id: trip.driver_id,
+        name: trip.driver_name
+      }),
+      className: "py-2 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-amber-200",
+      title: "Calificar Conductor (HU-10)"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "star",
+      className: "w-3.5 h-3.5 fill-amber-500 text-amber-500"
+    }), /*#__PURE__*/React.createElement("span", null, "Calificar")), trip && /*#__PURE__*/React.createElement("button", {
       onClick: () => onShareWhatsApp(trip),
-      className: "mt-4 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
+      className: "py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95",
+      title: "Compartir ruta en WhatsApp"
     }, /*#__PURE__*/React.createElement("i", {
       "data-lucide": "share-2",
       className: "w-3.5 h-3.5"
-    }), " Compartir Ruta WhatsApp"));
+    }))));
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
     className: "text-lg font-bold text-orange-700 mb-3 flex items-center gap-2"
   }, /*#__PURE__*/React.createElement("i", {
@@ -3939,13 +4298,42 @@ function MyTripsView({
     className: "font-semibold text-slate-900 truncate"
   }, st.stop_name), /*#__PURE__*/React.createElement("span", {
     className: "text-slate-400 text-[10px]"
-  }, "(", st.passenger_name, ")")))))), /*#__PURE__*/React.createElement("button", {
+  }, "(", st.passenger_name, ")")))))), /*#__PURE__*/React.createElement("div", {
+    className: "mt-4 pt-3 border-t border-slate-100 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setSelectedReceiptData({
+      booking: {
+        id: `RUTAU-PUB-${t.id}`,
+        passenger_name: 'Cupos Asignados',
+        stop_requested: null
+      },
+      trip: t
+    }),
+    className: "flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200",
+    title: "Ver desglose y aporte de gasolina del trayecto (HU-08)"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "receipt",
+    className: "w-3.5 h-3.5"
+  }), /*#__PURE__*/React.createElement("span", null, "Ver Aporte Gasolina")), /*#__PURE__*/React.createElement("button", {
     onClick: () => onShareWhatsApp(t),
-    className: "mt-4 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
+    className: "py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95",
+    title: "Notificar a compa\xF1eros por WhatsApp"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "share-2",
     className: "w-3.5 h-3.5"
-  }), " Notificar a Compa\xF1eros"))))));
+  }), /*#__PURE__*/React.createElement("span", null, "Notificar"))))))), selectedReceiptData && /*#__PURE__*/React.createElement(DigitalReceiptModal, {
+    isOpen: !!selectedReceiptData,
+    onClose: () => setSelectedReceiptData(null),
+    booking: selectedReceiptData.booking,
+    trip: selectedReceiptData.trip,
+    currentUser: currentUser,
+    onShareWhatsApp: onShareWhatsApp
+  }), reviewTargetUser && /*#__PURE__*/React.createElement(ReviewRatingModal, {
+    isOpen: !!reviewTargetUser,
+    onClose: () => setReviewTargetUser(null),
+    targetUser: reviewTargetUser,
+    addToast: addToast
+  }));
 }
 
 // ==========================================================================

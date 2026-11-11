@@ -577,6 +577,17 @@ function RutaUApp() {
     addToast(`Perfil institucional actualizado: ${updatedUser.full_name} (${updatedUser.residential_zone}).`, 'success');
   };
 
+  const handleSwitchDemoUser = (userId) => {
+    const user = registeredUsers.find(u => u.id === userId) || DEFAULT_SEED_DATA.users.find(u => u.id === userId);
+    if (!user) return;
+    const token = JWTService.sign(user, 8);
+    handleLogin(user, token);
+    const roleLabel = user.role === 'conductor' 
+      ? `Conductor (${user.vehicle?.brand || 'Vehículo'})`
+      : `Pasajera (${user.faculty})`;
+    addToast(`Modo Demostración: Sesión activa como ${user.full_name} [${roleLabel}].`, 'success');
+  };
+
   const handleLogout = () => {
     setJwtToken(null);
     setCurrentUser(null);
@@ -765,7 +776,17 @@ function RutaUApp() {
             onLogout={handleLogout}
           />
 
-          <StatusBar jwtToken={jwtToken} />
+          <StatusBar 
+            jwtToken={jwtToken} 
+            currentUser={currentUser}
+            onSwitchDemoUser={handleSwitchDemoUser}
+            onOpenRegister={() => setIsRegisterModalOpen(true)}
+            onOpenProfile={() => {
+              if (!currentUser) setIsLoginModalOpen(true);
+              else setIsProfileModalOpen(true);
+            }}
+            onOpenLogin={() => setIsLoginModalOpen(true)}
+          />
 
           <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6">
             {activeTab === 'feed' && (
@@ -782,6 +803,7 @@ function RutaUApp() {
                 currentUser={currentUser}
                 bookings={bookings}
                 onShareWhatsApp={shareTripOnWhatsApp}
+                addToast={addToast}
               />
             )}
 
@@ -1116,7 +1138,7 @@ function LandingHero({ onOpenLogin, onOpenRegister, onGoToFeed, currentUser }) {
 // ==========================================================================
 // 2. COMPONENTE: Navbar (Menú de Inicio Elevado con Colores Cálidos del Login)
 // ==========================================================================
-function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, onOpenSupabase, onLogout, onOpenProfile }) {
+function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, onOpenRegister, onOpenSupabase, onLogout, onOpenProfile }) {
   return (
     <header className="glass-nav sticky top-0 z-40 px-4 sm:px-6 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -1260,14 +1282,24 @@ function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, on
               </button>
             </div>
           ) : (
-            <button 
-              onClick={onOpenLogin}
-              className="px-4 py-2 rounded-xl bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold shadow-md shadow-orange-500/25 transition active:scale-95 flex items-center gap-2"
-            >
-              <i data-lucide="user" className="w-4 h-4"></i>
-              <span>Iniciar Sesión</span>
-              <i data-lucide="arrow-right" className="w-3.5 h-3.5"></i>
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={onOpenRegister}
+                className="hidden sm:flex px-3.5 py-2 rounded-xl bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold border border-orange-200 transition active:scale-95 items-center gap-1.5"
+                title="Registrarse con código de verificación OTP (HU-02)"
+              >
+                <i data-lucide="user-plus" className="w-3.5 h-3.5"></i>
+                <span>Registrarse (HU-02)</span>
+              </button>
+              <button 
+                onClick={onOpenLogin}
+                className="px-4 py-2 rounded-xl bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold shadow-md shadow-orange-500/25 transition active:scale-95 flex items-center gap-2"
+              >
+                <i data-lucide="user" className="w-4 h-4"></i>
+                <span>Iniciar Sesión</span>
+                <i data-lucide="arrow-right" className="w-3.5 h-3.5"></i>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -1278,29 +1310,87 @@ function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, on
 // ==========================================================================
 // 3. COMPONENTE: StatusBar (Barra de Estado Institucional)
 // ==========================================================================
-function StatusBar({ jwtToken }) {
+function StatusBar({ jwtToken, currentUser, onSwitchDemoUser, onOpenRegister, onOpenProfile, onOpenLogin }) {
   return (
-    <div className="bg-[#fff8f5] border-b border-orange-200/50 px-4 py-1.5 text-[11.5px] text-slate-600">
-      <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="font-semibold text-slate-800">RutaU Pascual Bravo:</span>
-          <span>Red Universitaria de Movilidad Segura • Campus Robledo y Sede C4TA San Javier</span>
+    <div className="bg-[#fff9f5] border-b border-orange-200/60 px-4 py-2 text-[11.5px] text-slate-700 shadow-xs">
+      <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="font-extrabold text-slate-900 tracking-tight">RutaU Pascual Bravo:</span>
+          <span className="text-slate-600 hidden sm:inline">Red de Movilidad Universitaria Segura • Campus Robledo &amp; Sede C4TA San Javier</span>
+          <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[10px] font-bold border border-orange-200">
+            Salidas 21:00+
+          </span>
         </div>
-        <div className="hidden md:flex items-center gap-3 text-[11px] text-slate-500">
+
+        {/* Barra de Acciones Rápidas para Demostración Institucional */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 bg-white/95 px-2 py-1 rounded-xl border border-orange-200/90 shadow-2xs">
+            <span className="text-[10px] font-extrabold text-orange-950 uppercase tracking-wider mr-1 flex items-center gap-1">
+              <span>🎓</span> Demo:
+            </span>
+            <button
+              type="button"
+              onClick={() => onSwitchDemoUser && onSwitchDemoUser('usr-1')}
+              className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition active:scale-95 flex items-center gap-1 ${
+                currentUser?.id === 'usr-1'
+                  ? 'bg-[#f25019] text-white shadow-xs'
+                  : 'bg-orange-50 text-slate-700 hover:bg-orange-100 border border-orange-100'
+              }`}
+              title="Demostración como Conductor: Cristian Guzmán (Chevrolet Onix • Destino Bello)"
+            >
+              <span>🚗 Conductor</span>
+              <span className="hidden lg:inline text-[9.5px] opacity-90">(Cristian)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onSwitchDemoUser && onSwitchDemoUser('usr-2')}
+              className={`px-2 py-0.5 rounded-lg text-[10.5px] font-bold transition active:scale-95 flex items-center gap-1 ${
+                currentUser?.id === 'usr-2'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-100'
+              }`}
+              title="Demostración como Pasajera: Joveidy Villarreal (Residencia Robledo • Coincidencias HU-03)"
+            >
+              <span>🎒 Pasajera</span>
+              <span className="hidden lg:inline text-[9.5px] opacity-90">(Joveidy)</span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenRegister}
+              className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200 transition active:scale-95 flex items-center gap-1"
+              title="Demostración de Código OTP Institucional (HU-02)"
+            >
+              <span>✨ Probar OTP</span>
+              <span className="text-[9px] bg-amber-200 text-amber-950 px-1 rounded font-extrabold">HU-02</span>
+            </button>
+            {currentUser && (
+              <button
+                type="button"
+                onClick={onOpenProfile}
+                className="px-2 py-0.5 rounded-lg text-[10.5px] font-bold bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 transition active:scale-95 flex items-center gap-1"
+                title="Configuración de Perfil Institucional (HU-03)"
+              >
+                <span>🎯 Perfil</span>
+                <span className="text-[9px] bg-slate-200 text-slate-800 px-1 rounded font-extrabold">HU-03</span>
+              </button>
+            )}
+          </div>
+
           {jwtToken ? (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-bold text-[10px] flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 font-mono font-bold text-[10px] flex items-center gap-1 shadow-2xs" title="Credencial criptográfica JWT con firma HMAC-SHA256 activa">
               <i data-lucide="shield-check" className="w-3 h-3 text-emerald-600"></i>
               <span>JWT HS256 ACTIVO</span>
             </span>
           ) : (
-            <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-medium">
-              Sesión Invitado
-            </span>
+            <button
+              type="button"
+              onClick={onOpenLogin}
+              className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold transition"
+            >
+              Iniciar Sesión
+            </button>
           )}
-          <span className="flex items-center gap-1"><span className="text-purple-600 font-bold">C4TA San Javier</span> &bull; <span className="text-emerald-600 font-bold">Robledo</span></span>
-          <span>•</span>
-          <span className="text-orange-600 font-semibold">Salidas desde las 21:00 hrs</span>
         </div>
       </div>
     </div>
@@ -1441,6 +1531,8 @@ function generateRoutePoints(start, end) {
 function TripMapView({ trips, selectedTripId, onSelectTrip, onBookTrip, isFullscreen, onToggleFullscreen }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const tileLayerRef = useRef(null);
+  const [mapLayer, setMapLayer] = useState('streets'); // 'streets' | 'satellite'
   const markersRef = useRef({});
   const polylinesRef = useRef({});
 
@@ -1461,10 +1553,11 @@ function TripMapView({ trips, selectedTripId, onSelectTrip, onBookTrip, isFullsc
       zoomControl: true
     });
 
-    window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    const streetsLayer = window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
-      attribution: '© Esri • I.U. Pascual Bravo (Robledo & C4TA)'
+      attribution: '© Esri Streets • I.U. Pascual Bravo (Robledo & C4TA)'
     }).addTo(map);
+    tileLayerRef.current = streetsLayer;
 
     // Ajuste dinámico de tamaño para evitar franjas grises
     setTimeout(() => {
@@ -1565,6 +1658,23 @@ function TripMapView({ trips, selectedTripId, onSelectTrip, onBookTrip, isFullsc
       }
     };
   }, []);
+
+  // Alternar capa de mapa: Callejero Esri vs Fotografía Satelital de Alta Resolución
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map || !window.L) return;
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+    const url = mapLayer === 'satellite'
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}';
+    const layer = window.L.tileLayer(url, {
+      maxZoom: 19,
+      attribution: mapLayer === 'satellite' ? '© Esri World Imagery • I.U. Pascual Bravo' : '© Esri Streets • I.U. Pascual Bravo'
+    }).addTo(map);
+    tileLayerRef.current = layer;
+  }, [mapLayer]);
 
   // Actualizar marcadores, paradas intermedias y polylines cuando cambian los viajes o selectedTripId
   useEffect(() => {
@@ -1770,6 +1880,18 @@ function TripMapView({ trips, selectedTripId, onSelectTrip, onBookTrip, isFullsc
       </div>
 
       <div className="absolute top-3 right-3 z-[400] flex items-center gap-1.5 flex-wrap justify-end">
+        <button 
+          onClick={() => setMapLayer(prev => prev === 'streets' ? 'satellite' : 'streets')}
+          className={`px-2.5 py-1.5 rounded-xl border shadow-md transition active:scale-95 text-xs font-bold flex items-center gap-1.5 ${
+            mapLayer === 'satellite'
+              ? 'bg-slate-900 text-white border-slate-700'
+              : 'bg-white/95 hover:bg-white text-slate-700 hover:text-orange-600 border-orange-200'
+          }`}
+          title={mapLayer === 'satellite' ? 'Cambiar a mapa vial vectorial' : 'Cambiar a fotografía satelital de alta resolución (Esri)'}
+        >
+          <span>${mapLayer === 'satellite' ? '🛰️ Satélite HD' : '🗺️ Calles'}</span>
+        </button>
+
         <button 
           onClick={handleCenterRobledo}
           className="px-2.5 py-1.5 bg-white/95 hover:bg-white text-slate-700 hover:text-emerald-700 rounded-xl border border-emerald-200 shadow-md transition active:scale-95 text-xs font-bold flex items-center gap-1.5"
@@ -2065,20 +2187,38 @@ function TripFeed({ trips, filters, onFilterChange, onBookTrip, onOpenPublish, o
       </div>
 
       {filteredTrips.length === 0 ? (
-        <div className="glass-panel p-8 text-center my-6 bg-white border border-orange-200/60 shadow-sm">
-          <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#f25019]">
+        <div className="glass-panel p-8 text-center my-6 bg-white border border-orange-200/60 shadow-sm rounded-3xl">
+          <div className="w-14 h-14 bg-orange-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#f25019] border border-orange-200">
             <i data-lucide="search-x" className="w-7 h-7"></i>
           </div>
-          <h3 className="text-base font-bold text-slate-900 mb-1">No se encontraron trayectos activos</h3>
-          <p className="text-xs text-slate-600 max-w-md mx-auto">
-            No hay conductores hacia esa zona para el horario seleccionado. Puedes ser el primero en publicar una ruta colaborativa.
+          <h3 className="text-base font-bold text-slate-900 mb-1">No se encontraron trayectos activos con esos filtros</h3>
+          <p className="text-xs text-slate-600 max-w-md mx-auto mb-4">
+            No hay conductores hacia esa zona o facultad en el horario seleccionado. Puedes restablecer los filtros para ver todas las rutas o publicar una nueva.
           </p>
-          <button 
-            onClick={onOpenPublish}
-            className="mt-4 px-5 py-2.5 bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold rounded-xl transition shadow-md shadow-orange-500/20 active:scale-95"
-          >
-            Publicar este Trayecto
-          </button>
+          <div className="flex items-center justify-center gap-2.5 flex-wrap">
+            <button 
+              type="button"
+              onClick={() => {
+                onFilterChange('zone', '');
+                onFilterChange('faculty', '');
+                onFilterChange('time', '');
+                onFilterChange('campus', '');
+                onFilterChange('onlyMyZone', false);
+              }}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition active:scale-95 flex items-center gap-1.5"
+            >
+              <i data-lucide="rotate-ccw" className="w-3.5 h-3.5"></i>
+              <span>Restablecer Filtros</span>
+            </button>
+            <button 
+              type="button"
+              onClick={onOpenPublish}
+              className="px-5 py-2 bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold rounded-xl transition shadow-md shadow-orange-500/20 active:scale-95 flex items-center gap-1.5"
+            >
+              <i data-lucide="plus-circle" className="w-3.5 h-3.5"></i>
+              <span>Publicar este Trayecto</span>
+            </button>
+          </div>
         </div>
       ) : (
         <>
@@ -4188,9 +4328,235 @@ function BookingModal({ isOpen, trip, currentUser, onClose, onConfirmBooking, ad
 }
 
 // ==========================================================================
+// ==========================================================================
+// 8.1. COMPONENTE: DigitalReceiptModal (Comprobante Digital y Amortización HU-08/HU-09)
+// ==========================================================================
+function DigitalReceiptModal({ isOpen, onClose, booking, trip, currentUser, onShareWhatsApp }) {
+  if (!isOpen || !booking) return null;
+  const currentTrip = trip || {};
+  const contribution = currentTrip.suggested_seat_price || 6000;
+  const taxiEstimate = Math.round(contribution * 4.2);
+  const savings = taxiEstimate - contribution;
+  const savingsPercent = Math.round((savings / taxiEstimate) * 100);
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4 font-poppins">
+      <div className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-orange-200 my-auto text-slate-800">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition"
+        >
+          <i data-lucide="x" className="w-5 h-5"></i>
+        </button>
+
+        <div className="text-center pb-4 border-b border-dashed border-orange-200">
+          <div className="w-12 h-12 rounded-2xl bg-orange-100 text-[#f25019] flex items-center justify-center mx-auto mb-2 font-bold shadow-sm">
+            <i data-lucide="receipt" className="w-6 h-6"></i>
+          </div>
+          <h3 className="text-lg font-black text-slate-900 tracking-tight">Comprobante Digital RutaU</h3>
+          <p className="text-[11px] text-slate-500 font-medium">Institución Universitaria Pascual Bravo • HU-08 &amp; HU-09</p>
+          <span className="inline-block mt-2 px-3 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10.5px] font-bold">
+            Aporte Solidario de Combustible
+          </span>
+        </div>
+
+        <div className="py-4 space-y-2.5 text-xs text-slate-600">
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400">Código de Reserva:</span>
+            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px]">{booking.id || 'RUTAU-PB-001'}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400">Estudiante Pasajero:</span>
+            <span className="font-bold text-slate-900">{booking.passenger_name || currentUser?.full_name}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400">Conductor Institucional:</span>
+            <span className="font-semibold text-slate-800">{currentTrip.driver_name || 'Compañero Conductor'}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400">Vehículo:</span>
+            <span className="font-medium text-slate-700">{currentTrip.vehicle_summary || 'Vehículo Registrado'}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400">Campus de Salida:</span>
+            <span className="font-bold text-emerald-700">{currentTrip.origin_campus === 'c4ta' ? '🏛️ Sede C4TA San Javier' : '🎓 Campus Robledo (Bloque 2)'}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-slate-400">Destino Residencial:</span>
+            <span className="font-bold text-orange-600">{currentTrip.destination_zone}</span>
+          </div>
+          {booking.stop_requested && (
+            <div className="flex justify-between items-center p-2 bg-amber-50 rounded-xl border border-amber-200 text-amber-900">
+              <span className="font-semibold">Parada Acordada:</span>
+              <span className="font-bold">{booking.stop_requested}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="py-3 px-4 bg-[#fff9f5] rounded-2xl border border-orange-200/80 mb-4 space-y-1.5">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-slate-500">Aporte sugerido de combustible:</span>
+            <span className="font-extrabold text-[#f25019] text-base tabular-nums">${contribution.toLocaleString('es-CO')} COP</span>
+          </div>
+          <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1 border-t border-orange-100">
+            <span>Tarifa comercial estimada (Taxi/App):</span>
+            <span className="line-through tabular-nums">~${taxiEstimate.toLocaleString('es-CO')} COP</span>
+          </div>
+          <div className="flex justify-between items-center text-xs font-bold text-emerald-700">
+            <span>Ahorro solidario generado:</span>
+            <span className="tabular-nums">~${savings.toLocaleString('es-CO')} COP ({savingsPercent}%)</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {currentTrip && onShareWhatsApp && (
+            <button
+              onClick={() => onShareWhatsApp(currentTrip)}
+              className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition active:scale-95 flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20"
+            >
+              <i data-lucide="share-2" className="w-4 h-4"></i>
+              <span>Compartir en WhatsApp</span>
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition active:scale-95"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================================================
+// 8.2. COMPONENTE: ReviewRatingModal (Calificación Comunitaria 1-5 Estrellas HU-10)
+// ==========================================================================
+function ReviewRatingModal({ isOpen, onClose, targetUser, onSubmitReview, addToast }) {
+  const [rating, setRating] = useState(5);
+  const [punctuality, setPunctuality] = useState(5);
+  const [respect, setRespect] = useState(5);
+  const [comment, setComment] = useState('');
+
+  if (!isOpen || !targetUser) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (onSubmitReview) {
+      onSubmitReview({
+        targetUserId: targetUser.id,
+        rating,
+        punctuality,
+        respect,
+        comment: comment.trim()
+      });
+    }
+    if (addToast) {
+      addToast(`¡Calificación de ${rating} estrellas guardada para ${targetUser.name}! Fortalece la confianza comunitaria (HU-10).`, 'success');
+    }
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4 font-poppins">
+      <div className="relative w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-orange-200 my-auto text-slate-800">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition"
+        >
+          <i data-lucide="x" className="w-5 h-5"></i>
+        </button>
+
+        <div className="flex items-center gap-3 pb-3 border-b border-orange-100 mb-4">
+          <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center font-bold text-sm shadow-sm">
+            <i data-lucide="star" className="w-5 h-5 fill-amber-500 text-amber-500"></i>
+          </div>
+          <div>
+            <h3 className="text-base font-extrabold text-slate-900 leading-tight">Calificación Comunitaria</h3>
+            <span className="text-[11px] text-slate-500 font-medium">Evalúa a {targetUser.name} • HU-10</span>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="text-center py-2 bg-[#fffaf7] p-3 rounded-2xl border border-orange-100">
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">Puntuación General</label>
+            <div className="flex items-center justify-center gap-1.5 text-2xl">
+              {[1, 2, 3, 4, 5].map(star => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  className="transition transform hover:scale-125 focus:outline-none p-1"
+                >
+                  <i 
+                    data-lucide="star" 
+                    className={`w-7 h-7 ${star <= rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200'}`}
+                  ></i>
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-amber-600 font-bold block mt-1">{rating} de 5 estrellas</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Puntualidad en salida</label>
+              <select 
+                value={punctuality} 
+                onChange={(e) => setPunctuality(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019]"
+              >
+                <option value={5}>Excelente (A tiempo)</option>
+                <option value={4}>Buena (Espera corta)</option>
+                <option value={3}>Regular</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Convivencia y Respeto</label>
+              <select 
+                value={respect} 
+                onChange={(e) => setRespect(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019]"
+              >
+                <option value={5}>Excelente (Ambiente seguro)</option>
+                <option value={4}>Bueno</option>
+                <option value={3}>Aceptable</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Comentario para la Comunidad (Opcional)</label>
+            <textarea 
+              rows={3} 
+              value={comment} 
+              onChange={(e) => setComment(e.target.value)} 
+              placeholder="Ej: Excelente viaje, puntual en portería de Bloque 2 y manejo muy prudente."
+              className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019]"
+            ></textarea>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 bg-[#f25019] hover:bg-[#d9420f] text-white text-xs font-bold rounded-xl transition shadow-md shadow-orange-500/25 active:scale-95 flex items-center justify-center gap-2"
+          >
+            <i data-lucide="check-circle" className="w-4 h-4"></i>
+            <span>Enviar Calificación Comunitaria</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================================================
 // 8. COMPONENTE: MyTripsView (Mis Trayectos y Reservas)
 // ==========================================================================
-function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsApp }) {
+function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsApp, addToast }) {
+  const [selectedReceiptData, setSelectedReceiptData] = useState(null); // { booking, trip }
+  const [reviewTargetUser, setReviewTargetUser] = useState(null); // { id, name }
+
   if (!currentUser) {
     return (
       <div className="glass-panel p-8 text-center my-8 max-w-lg mx-auto bg-white border border-orange-200">
@@ -4244,14 +4610,35 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                       </div>
                     )}
                   </div>
-                  {trip && (
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
                     <button 
-                      onClick={() => onShareWhatsApp(trip)}
-                      className="mt-4 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
+                      onClick={() => setSelectedReceiptData({ booking: b, trip })}
+                      className="flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200"
+                      title="Ver Comprobante Digital con cálculo de ahorro (HU-08 & HU-09)"
                     >
-                      <i data-lucide="share-2" className="w-3.5 h-3.5"></i> Compartir Ruta WhatsApp
+                      <i data-lucide="receipt" className="w-3.5 h-3.5"></i>
+                      <span>Comprobante</span>
                     </button>
-                  )}
+                    {trip && (
+                      <button 
+                        onClick={() => setReviewTargetUser({ id: trip.driver_id, name: trip.driver_name })}
+                        className="py-2 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-amber-200"
+                        title="Calificar Conductor (HU-10)"
+                      >
+                        <i data-lucide="star" className="w-3.5 h-3.5 fill-amber-500 text-amber-500"></i>
+                        <span>Calificar</span>
+                      </button>
+                    )}
+                    {trip && (
+                      <button 
+                        onClick={() => onShareWhatsApp(trip)}
+                        className="py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95"
+                        title="Compartir ruta en WhatsApp"
+                      >
+                        <i data-lucide="share-2" className="w-3.5 h-3.5"></i>
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -4295,17 +4682,51 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                     </div>
                   )}
                 </div>
-                <button 
-                  onClick={() => onShareWhatsApp(t)}
-                  className="mt-4 py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
-                >
-                  <i data-lucide="share-2" className="w-3.5 h-3.5"></i> Notificar a Compañeros
-                </button>
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
+                  <button 
+                    onClick={() => setSelectedReceiptData({ booking: { id: `RUTAU-PUB-${t.id}`, passenger_name: 'Cupos Asignados', stop_requested: null }, trip: t })}
+                    className="flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200"
+                    title="Ver desglose y aporte de gasolina del trayecto (HU-08)"
+                  >
+                    <i data-lucide="receipt" className="w-3.5 h-3.5"></i>
+                    <span>Ver Aporte Gasolina</span>
+                  </button>
+                  <button 
+                    onClick={() => onShareWhatsApp(t)}
+                    className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
+                    title="Notificar a compañeros por WhatsApp"
+                  >
+                    <i data-lucide="share-2" className="w-3.5 h-3.5"></i>
+                    <span>Notificar</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal de Comprobante Digital (HU-08 & HU-09) */}
+      {selectedReceiptData && (
+        <DigitalReceiptModal 
+          isOpen={!!selectedReceiptData}
+          onClose={() => setSelectedReceiptData(null)}
+          booking={selectedReceiptData.booking}
+          trip={selectedReceiptData.trip}
+          currentUser={currentUser}
+          onShareWhatsApp={onShareWhatsApp}
+        />
+      )}
+
+      {/* Modal de Calificación Comunitaria 1-5 Estrellas (HU-10) */}
+      {reviewTargetUser && (
+        <ReviewRatingModal 
+          isOpen={!!reviewTargetUser}
+          onClose={() => setReviewTargetUser(null)}
+          targetUser={reviewTargetUser}
+          addToast={addToast}
+        />
+      )}
     </div>
   );
 }
