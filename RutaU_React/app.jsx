@@ -452,6 +452,7 @@ function RutaUApp() {
   const [toasts, setToasts] = useState([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSosModalOpen, setIsSosModalOpen] = useState(false);
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isSupabaseModalOpen, setIsSupabaseModalOpen] = useState(false);
@@ -460,7 +461,9 @@ function RutaUApp() {
   const [filters, setFilters] = useState({
     zone: '',
     faculty: '',
-    time: ''
+    time: '',
+    campus: '',
+    onlyMyZone: false
   });
 
   // Persistencia de usuarios registrados
@@ -557,6 +560,21 @@ function RutaUApp() {
     setIsRegisterModalOpen(false);
     setActiveTab('feed');
     addToast(`¡Registro exitoso, ${user.full_name}! Token JWT institucional activado.`, 'success');
+  };
+
+  const handleUpdateProfile = (updatedUser) => {
+    setCurrentUser(updatedUser);
+    setRegisteredUsers(prev => {
+      const updated = prev.map(u => (u.id === updatedUser.id || (u.email && u.email.toLowerCase() === updatedUser.email.toLowerCase())) ? updatedUser : u);
+      try {
+        localStorage.setItem('rutau_registered_users', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+    try {
+      localStorage.setItem('rutau_current_user', JSON.stringify(updatedUser));
+    } catch (e) {}
+    addToast(`Perfil institucional actualizado: ${updatedUser.full_name} (${updatedUser.residential_zone}).`, 'success');
   };
 
   const handleLogout = () => {
@@ -742,6 +760,7 @@ function RutaUApp() {
             jwtToken={jwtToken}
             onOpenLogin={() => setIsLoginModalOpen(true)}
             onOpenRegister={() => setIsRegisterModalOpen(true)}
+            onOpenProfile={() => setIsProfileModalOpen(true)}
             onOpenSupabase={() => setIsSupabaseModalOpen(true)}
             onLogout={handleLogout}
           />
@@ -827,6 +846,17 @@ function RutaUApp() {
         registeredUsers={registeredUsers}
         addToast={addToast}
       />
+
+      {/* Modal de Configuración de Perfil Institucional (HU-03) */}
+      {isProfileModalOpen && (
+        <InstitutionalProfileModal 
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          currentUser={currentUser}
+          onUpdateProfile={handleUpdateProfile}
+          addToast={addToast}
+        />
+      )}
 
       {/* Modal de Publicar Viaje */}
       {isPublishModalOpen && (
@@ -1086,7 +1116,7 @@ function LandingHero({ onOpenLogin, onOpenRegister, onGoToFeed, currentUser }) {
 // ==========================================================================
 // 2. COMPONENTE: Navbar (Menú de Inicio Elevado con Colores Cálidos del Login)
 // ==========================================================================
-function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, onOpenSupabase, onLogout }) {
+function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, onOpenSupabase, onLogout, onOpenProfile }) {
   return (
     <header className="glass-nav sticky top-0 z-40 px-4 sm:px-6 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
@@ -1190,25 +1220,40 @@ function Navbar({ activeTab, onSwitchTab, currentUser, jwtToken, onOpenLogin, on
           {currentUser ? (
             <div className="flex items-center gap-2 sm:gap-2.5 bg-white py-1 px-3 rounded-full border border-orange-200 shadow-sm">
               <div 
-                className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center font-bold text-white text-xs shadow-sm cursor-pointer"
-                title={`Usuario: ${currentUser.full_name}`}
-                onClick={() => onSwitchTab('my-trips')}
+                className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center font-bold text-white text-xs shadow-sm cursor-pointer hover:ring-2 hover:ring-emerald-400 transition"
+                title={`Perfil Institucional (HU-03): ${currentUser.full_name}`}
+                onClick={onOpenProfile}
               >
                 {currentUser.full_name.split(' ').map(n => n[0]).slice(0, 2).join('')}
               </div>
-              <div className="hidden lg:block text-left text-xs">
+              <div 
+                className="hidden lg:block text-left text-xs cursor-pointer hover:opacity-85 transition" 
+                onClick={onOpenProfile} 
+                title="Configurar Perfil Institucional (HU-03: Nombre, Facultad y Zona Residencial)"
+              >
                 <span className="font-bold text-slate-800 block truncate max-w-[120px]">{currentUser.full_name}</span>
-                <span className="text-[10.5px] text-emerald-600 font-semibold capitalize">{currentUser.role} • ★ 4.9</span>
+                <span className="text-[10.5px] text-emerald-600 font-semibold capitalize flex items-center gap-1">
+                  <span>{currentUser.role}</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-orange-600 font-bold truncate max-w-[85px]">{currentUser.residential_zone || 'Robledo'}</span>
+                </span>
               </div>
+              <button 
+                onClick={onOpenProfile}
+                className="p-1.5 text-slate-500 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                title="Configurar Perfil Institucional (HU-03)"
+              >
+                <i data-lucide="user-cog" className="w-3.5 h-3.5"></i>
+              </button>
               {jwtToken && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold" title="Sesión validada con JWT HS256 (validez 8h)">
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold" title="Sesión validada con JWT HS256 y Vinculación Activa (HU-02)">
                   <i data-lucide="shield-check" className="w-3 h-3 text-emerald-600"></i>
                   <span>JWT</span>
                 </span>
               )}
               <button 
                 onClick={onLogout}
-                className="p-1 text-slate-400 hover:text-rose-500 transition ml-1"
+                className="p-1 text-slate-400 hover:text-rose-500 transition ml-0.5"
                 title="Cerrar Sesión y Revocar Token JWT"
               >
                 <i data-lucide="log-out" className="w-4 h-4"></i>
@@ -1803,9 +1848,24 @@ function TripFeed({ trips, filters, onFilterChange, onBookTrip, onOpenPublish, o
       const matchCampus = !filters.campus || 
         (filters.campus === 'c4ta' && (trip.origin_campus === 'c4ta' || (trip.origin_meeting_point || '').toLowerCase().includes('c4ta') || (trip.origin_meeting_point || '').toLowerCase().includes('san javier'))) ||
         (filters.campus === 'robledo' && (trip.origin_campus !== 'c4ta' && !(trip.origin_meeting_point || '').toLowerCase().includes('c4ta') && !(trip.origin_meeting_point || '').toLowerCase().includes('san javier')));
-      return matchZone && matchFaculty && matchTime && matchCampus;
+      
+      const userZone = currentUser?.residential_zone ? currentUser.residential_zone.toLowerCase() : '';
+      const zoneKeywords = userZone ? userZone.split(/[\s,()\/]+/).filter(w => w.length > 3) : [];
+      const matchMyZone = !filters.onlyMyZone || !userZone || (
+        trip.destination_zone.toLowerCase().includes(userZone) ||
+        userZone.includes(trip.destination_zone.toLowerCase()) ||
+        (trip.destination_address && trip.destination_address.toLowerCase().includes(userZone)) ||
+        (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(userZone))) ||
+        zoneKeywords.some(kw => 
+          trip.destination_zone.toLowerCase().includes(kw) ||
+          (trip.destination_address && trip.destination_address.toLowerCase().includes(kw)) ||
+          (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(kw)))
+        )
+      );
+
+      return matchZone && matchFaculty && matchTime && matchCampus && matchMyZone;
     });
-  }, [trips, filters]);
+  }, [trips, filters, currentUser]);
 
   useEffect(() => {
     if (selectedTripId && !filteredTrips.some(t => t.id === selectedTripId)) {
@@ -1933,6 +1993,23 @@ function TripFeed({ trips, filters, onFilterChange, onBookTrip, onOpenPublish, o
             <span>🏛️</span>
             <span>Sede C4TA San Javier</span>
           </button>
+
+          {currentUser?.residential_zone && (
+            <button 
+              type="button"
+              onClick={() => onFilterChange('onlyMyZone', !filters.onlyMyZone)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 active:scale-95 shadow-xs ${
+                filters.onlyMyZone 
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-amber-600 shadow-sm ring-2 ring-amber-300' 
+                  : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
+              }`}
+              title={`Filtrar rutas que coincidan con tu zona residencial: ${currentUser.residential_zone} (HU-03)`}
+            >
+              <span>🎯</span>
+              <span>Mis Coincidencias ({currentUser.residential_zone.split(' ')[0]})</span>
+              <span className="text-[10px] px-1.5 py-0.2 bg-amber-200/80 text-amber-950 rounded-full font-extrabold">HU-03</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -2117,6 +2194,23 @@ function TripCard({ trip, currentUser, onBookTrip, bookings, onShareWhatsApp, is
   const savingsPercent = Math.round(((taxiEstimate - trip.suggested_seat_price) / taxiEstimate) * 100);
   const tripStops = trip.stops || [];
 
+  // Coincidencia con zona residencial del usuario autenticado (HU-03)
+  const userZone = currentUser?.residential_zone ? currentUser.residential_zone.toLowerCase() : '';
+  const zoneKeywords = userZone ? userZone.split(/[\s,()\/]+/).filter(w => w.length > 3) : [];
+  const matchesMyZone = Boolean(
+    userZone && (
+      trip.destination_zone.toLowerCase().includes(userZone) ||
+      userZone.includes(trip.destination_zone.toLowerCase()) ||
+      (trip.destination_address && trip.destination_address.toLowerCase().includes(userZone)) ||
+      (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(userZone))) ||
+      zoneKeywords.some(kw => 
+        trip.destination_zone.toLowerCase().includes(kw) ||
+        (trip.destination_address && trip.destination_address.toLowerCase().includes(kw)) ||
+        (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(kw)))
+      )
+    )
+  );
+
   return (
     <div 
       className={`glass-panel p-5 flex flex-col justify-between bg-white border rounded-2xl shadow-sm hover:border-orange-300 hover:shadow-xl transition-all duration-200 group text-slate-800 ${
@@ -2161,6 +2255,17 @@ function TripCard({ trip, currentUser, onBookTrip, bookings, onShareWhatsApp, is
             </span>
           </div>
         </div>
+
+        {/* Coincidencia de Ruta Pertinente con Perfil Institucional (HU-03) */}
+        {matchesMyZone && (
+          <div className="mb-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 text-amber-950 text-xs font-bold flex items-center justify-between shadow-xs">
+            <div className="flex items-center gap-1.5 truncate">
+              <span className="text-amber-600 text-sm">🎯</span>
+              <span className="truncate">Coincide con tu zona residencial: <strong>{currentUser.residential_zone}</strong></span>
+            </div>
+            <span className="text-[10px] bg-amber-200/90 text-amber-950 px-2 py-0.5 rounded-full font-extrabold shrink-0 ml-1.5">HU-03</span>
+          </div>
+        )}
 
         {/* Ruta y Punto de Encuentro (Superficie Cálida Suave) */}
         <div className="space-y-2.5 my-3.5 bg-[#fffaf7] p-3.5 rounded-xl border border-orange-100">
@@ -2614,11 +2719,14 @@ function AuthLoginModal({ isOpen, onClose, onLogin, onSwitchToRegister, currentU
 // Diseñado fielmente a partir de los diseño oficial
 // ==========================================================================
 function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, currentUser, registeredUsers, addToast }) {
+  const [regStep, setRegStep] = useState('form'); // 'form' | 'verify_code'
   const [accountType, setAccountType] = useState('estudiante'); // 'conductor' | 'estudiante'
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [faculty, setFaculty] = useState('Tecnología en Desarrollo de Software');
+  const [residentialZone, setResidentialZone] = useState('Robledo (Pilarica, San Germán)');
+  const [preferredCampus, setPreferredCampus] = useState('Campus Robledo');
   const [phone, setPhone] = useState('');
   const [vehicle, setVehicle] = useState('');
   const [password, setPassword] = useState('');
@@ -2627,9 +2735,26 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [registerError, setRegisterError] = useState('');
 
+  // Estados para HU-02: Verificación de identidad por código
+  const [verificationCode, setVerificationCode] = useState('');
+  const [generatedCode, setGeneratedCode] = useState('');
+  const [resendTimer, setResendTimer] = useState(30);
+
+  // Temporizador para reenvío de código
+  useEffect(() => {
+    let interval = null;
+    if (regStep === 'verify_code' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [regStep, resendTimer]);
+
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  // Paso 1: Validar formulario y solicitar código de verificación
+  const handleProceedToVerification = (e) => {
     e.preventDefault();
     setRegisterError('');
     const cleanEmail = email.trim().toLowerCase();
@@ -2662,8 +2787,40 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
       return;
     }
 
+    // HU-02: Generar código de seguridad de 6 dígitos
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedCode(code);
+    setVerificationCode('');
+    setResendTimer(30);
+    setRegStep('verify_code');
+    addToast(`Código de verificación enviado a ${cleanEmail}`, 'info');
+  };
+
+  // Reenviar código HU-02
+  const handleResendCode = () => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setGeneratedCode(code);
+    setVerificationCode('');
+    setResendTimer(30);
+    addToast(`Nuevo código de verificación generado: ${code}`, 'info');
+  };
+
+  // Paso 2: Validar código ingresado y activar cuenta (HU-02)
+  const handleConfirmVerification = (e) => {
+    if (e) e.preventDefault();
+    setRegisterError('');
+
+    const cleanInputCode = verificationCode.trim();
+    if (cleanInputCode !== generatedCode) {
+      setRegisterError('Código incorrecto. Ingresa los 6 dígitos enviados a tu correo institucional.');
+      addToast('Código de verificación incorrecto.', 'error');
+      return;
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
     const fullName = `${firstName.trim()} ${lastName.trim()}`.trim() || cleanEmail.split('@')[0].replace('.', ' ').toUpperCase();
 
+    // Cuenta activada y vinculación institucional confirmada (HU-02 y HU-03)
     const user = {
       id: `usr-${Date.now()}`,
       email: cleanEmail,
@@ -2672,11 +2829,13 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
       institution: 'Institución Universitaria Pascual Bravo',
       faculty: faculty || 'Tecnología en Desarrollo de Software',
       role: accountType,
-      residential_zone: 'Campus Robledo',
+      residential_zone: residentialZone || 'Robledo (Pilarica, San Germán)',
+      preferred_campus: preferredCampus || 'Campus Robledo',
       phone: phone || '+57 300 000 0000',
       rating_average: 5.0,
       trips_completed: 0,
-      verified: true,
+      verified: true, // HU-02: Identidad confirmada por código
+      verification_code_confirmed: true,
       vehicle: accountType === 'conductor' ? {
         type: 'auto',
         brand: vehicle || 'Vehículo Registrado',
@@ -2688,6 +2847,7 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
 
     // Generar Token JWT Seguro (HS256 con 8 horas de validez)
     const token = JWTService.sign(user, 8);
+    addToast(`¡Identidad confirmada con éxito (HU-02)! Cuenta activada para ${fullName}.`, 'success');
     onRegister(user, token);
   };
 
@@ -2707,248 +2867,415 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
 
       {/* Tarjeta Principal de Registro */}
       <div className="relative z-10 w-full max-w-5xl auth-glass-card rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-8 md:gap-10 my-auto">
-        {/* Lado Izquierdo: Formulario */}
-        <div className="w-full md:w-[480px] shrink-0 auth-inner-card rounded-2xl p-5 sm:p-7 text-slate-800">
+        {/* Lado Izquierdo: Formulario o Verificación OTP */}
+        <div className="w-full md:w-[490px] shrink-0 auth-inner-card rounded-2xl p-5 sm:p-7 text-slate-800">
           <div className="flex items-center justify-between mb-2">
             <img src="assets/logo_full.png" alt="RutaU" className="h-8 w-auto object-contain" />
             <span className="badge-edu text-[10px] bg-emerald-100 text-emerald-800 border-emerald-300">Pascual Bravo</span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#222222] tracking-tight mb-1">
-            Crea tu cuenta en RutaU
-          </h1>
-          <p className="text-xs text-slate-500 mb-4 font-medium">
-            Selecciona tu perfil y completa tus datos para empezar con credencial JWT institucional.
-          </p>
+          {regStep === 'form' ? (
+            <>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#222222] tracking-tight mb-1">
+                Crea tu cuenta en RutaU
+              </h1>
+              <p className="text-xs text-slate-500 mb-4 font-medium">
+                Completa tu perfil institucional (HU-03) y valida tu vinculación activa por código (HU-02).
+              </p>
 
-          {/* Banner de Aviso en Registro */}
-          {registerError && (
-            <div className="mb-3.5 p-3 bg-rose-50 border-2 border-rose-300 rounded-xl text-rose-900 text-xs shadow-sm flex items-start gap-2.5 animate-pulse">
-              <div className="p-1 bg-rose-100 rounded-lg text-rose-600 shrink-0 mt-0.5">
-                <i data-lucide="alert-triangle" className="w-4 h-4"></i>
+              {/* Banner de Aviso en Registro */}
+              {registerError && (
+                <div className="mb-3.5 p-3 bg-rose-50 border-2 border-rose-300 rounded-xl text-rose-900 text-xs shadow-sm flex items-start gap-2.5">
+                  <div className="p-1 bg-rose-100 rounded-lg text-rose-600 shrink-0 mt-0.5">
+                    <i data-lucide="alert-triangle" className="w-4 h-4"></i>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-bold text-rose-900 text-xs">Aviso de Registro</div>
+                    <p className="mt-0.5 text-rose-700 leading-snug font-medium text-[11px]">
+                      {registerError}
+                    </p>
+                    {registerError.includes('ya está registrado') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegisterError('');
+                          if (onSwitchToLogin) onSwitchToLogin();
+                        }}
+                        className="mt-1.5 text-[11px] font-bold text-orange-600 hover:text-orange-700 underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Ir a Iniciar Sesión</span>
+                        <i data-lucide="arrow-right" className="w-3 h-3"></i>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleProceedToVerification} className="space-y-3">
+                {/* Selector de Perfil: Conductor vs Estudiante */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
+                    Tipo de cuenta
+                  </label>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setAccountType('conductor')}
+                      className={`p-2.5 rounded-xl border text-left transition flex items-start gap-2 active:scale-95 ${
+                        accountType === 'conductor'
+                          ? 'border-[#f25019] bg-orange-50 text-slate-900 shadow-sm ring-1 ring-orange-400'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50/20'
+                      }`}
+                    >
+                      <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${accountType === 'conductor' ? 'bg-[#f25019] text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        <i data-lucide="car" className="w-3.5 h-3.5"></i>
+                      </div>
+                      <div>
+                        <span className="font-bold text-xs block text-slate-900 leading-tight">Conductor</span>
+                        <span className="text-[9.5px] text-slate-500 leading-tight block mt-0.5">Ofrece viajes y administra tus rutas</span>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setAccountType('estudiante')}
+                      className={`p-2.5 rounded-xl border text-left transition flex items-start gap-2 active:scale-95 ${
+                        accountType === 'estudiante'
+                          ? 'border-[#f25019] bg-orange-50 text-slate-900 shadow-sm ring-1 ring-orange-400'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50/20'
+                      }`}
+                    >
+                      <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${accountType === 'estudiante' ? 'bg-[#f25019] text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        <i data-lucide="book-open" className="w-3.5 h-3.5"></i>
+                      </div>
+                      <div>
+                        <span className="font-bold text-xs block text-slate-900 leading-tight">Estudiante</span>
+                        <span className="text-[9.5px] text-slate-500 leading-tight block mt-0.5">Reserva asientos y viaja a la universidad</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Nombre y Apellido */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Nombre</label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="Tu nombre" 
+                      value={firstName} 
+                      onChange={(e) => setFirstName(e.target.value)} 
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Apellido</label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="Tu apellido" 
+                      value={lastName} 
+                      onChange={(e) => setLastName(e.target.value)} 
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+                    />
+                  </div>
+                </div>
+
+                {/* Correo Electrónico Institucional */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">Correo electrónico institucional</label>
+                  <input 
+                    type="email" 
+                    required 
+                    placeholder="ejemplo@pascualbravo.edu.co" 
+                    value={email} 
+                    onChange={(e) => setEmail(e.target.value)} 
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+                  />
+                </div>
+
+                {/* HU-03: Facultad y Zona Residencial de Destino */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                      <span>Facultad / Carrera</span>
+                      <span className="text-[9px] font-bold text-orange-600">HU-03</span>
+                    </label>
+                    <select 
+                      value={faculty} 
+                      onChange={(e) => setFaculty(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
+                    >
+                      <option value="Tecnología en Desarrollo de Software">Software</option>
+                      <option value="Facultad de Ingeniería">Fac. Ingeniería</option>
+                      <option value="Facultad de Producción y Diseño">Fac. Producción y Diseño</option>
+                      <option value="Ingeniería Mecánica">Ing. Mecánica</option>
+                      <option value="Ingeniería Eléctrica y Electrónica">Eléctrica / Electrónica</option>
+                      <option value="Ingeniería Industrial">Ing. Industrial</option>
+                      <option value="Diseño Gráfico / Textil">Diseño Gráfico / Textil</option>
+                      <option value="Otra Carrera Institucional">Otra Carrera</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                      <span>Zona Residencial</span>
+                      <span className="text-[9px] font-bold text-orange-600">HU-03</span>
+                    </label>
+                    <select 
+                      value={residentialZone} 
+                      onChange={(e) => setResidentialZone(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
+                    >
+                      <option value="Robledo (Pilarica, San Germán)">Robledo / Pilarica</option>
+                      <option value="Bello">Bello (Niquía / Cabañas)</option>
+                      <option value="Laureles / San Javier">Laureles / Estadio</option>
+                      <option value="Castilla / Santander">Castilla / Doce de Octubre</option>
+                      <option value="Envigado / Sabaneta">Envigado / Sabaneta</option>
+                      <option value="Itagüí">Itagüí / San Antonio</option>
+                      <option value="San Javier / Comuna 13">San Javier / Comuna 13</option>
+                      <option value="El Poblado">El Poblado / Manila</option>
+                      <option value="Buenos Aires / Boston">Buenos Aires / Boston</option>
+                      <option value="Calasanz / Floresta">Calasanz / Floresta</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Sede Habitual y Teléfono */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Sede Habitual</label>
+                    <select 
+                      value={preferredCampus} 
+                      onChange={(e) => setPreferredCampus(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
+                    >
+                      <option value="Campus Robledo">Campus Robledo (Calle 73)</option>
+                      <option value="Ciudadela C4TA San Javier">Ciudadela C4TA San Javier</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Teléfono / WhatsApp</label>
+                    <input 
+                      type="tel" 
+                      placeholder="300 123 4567" 
+                      value={phone} 
+                      onChange={(e) => setPhone(e.target.value)} 
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+                    />
+                  </div>
+                </div>
+
+                {/* Si es conductor: Datos del vehículo */}
+                {accountType === 'conductor' && (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Vehículo (Marca, Modelo, Placa)</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ej: Chevrolet Onix • PBV-202" 
+                      value={vehicle} 
+                      onChange={(e) => setVehicle(e.target.value)} 
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+                    />
+                  </div>
+                )}
+
+                {/* Contraseña y Confirmar Contraseña */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Contraseña</label>
+                    <div className="relative">
+                      <input 
+                        type={showPassword ? 'text' : 'password'} 
+                        required 
+                        placeholder="••••••••" 
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)} 
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019] pr-8" 
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                      >
+                        <i data-lucide={showPassword ? "eye-off" : "eye"} className="w-3.5 h-3.5"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">Confirmar contraseña</label>
+                    <input 
+                      type={showPassword ? 'text' : 'password'} 
+                      required 
+                      placeholder="••••••••" 
+                      value={confirmPassword} 
+                      onChange={(e) => setConfirmPassword(e.target.value)} 
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+                    />
+                  </div>
+                </div>
+
+                {/* Casilla de aceptación de condiciones */}
+                <div className="flex items-start gap-2 pt-1">
+                  <input 
+                    type="checkbox" 
+                    id="terms" 
+                    checked={acceptedTerms} 
+                    onChange={(e) => setAcceptedTerms(e.target.checked)} 
+                    className="mt-0.5 rounded text-[#f25019] focus:ring-[#f25019]" 
+                  />
+                  <label htmlFor="terms" className="text-[10.5px] text-slate-600 leading-tight">
+                    Acepto los términos y condiciones de RutaU y confirmo mi vinculación institucional activa con la I.U. Pascual Bravo.
+                  </label>
+                </div>
+
+                {/* Botón Pasar a Verificación por Código */}
+                <button 
+                  type="submit" 
+                  className="btn-primary-orange w-full py-2.5 rounded-lg text-white font-bold text-xs shadow-md mt-2 flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <i data-lucide="shield-check" className="w-3.5 h-3.5"></i>
+                  <span>Continuar con Verificación de Identidad (HU-02)</span>
+                  <i data-lucide="arrow-right" className="w-3.5 h-3.5"></i>
+                </button>
+              </form>
+
+              <p className="text-xs text-center text-slate-600 mt-4">
+                ¿Ya tienes cuenta? 
+                <a 
+                  href="javascript:void(0)" 
+                  onClick={onSwitchToLogin}
+                  className="font-bold text-[#ae4700] hover:underline ml-1 cursor-pointer"
+                >
+                  Inicia sesión
+                </a>
+              </p>
+            </>
+          ) : (
+            /* ========================================================= */
+            /* PANTALLA HU-02: VERIFICACIÓN DE IDENTIDAD POR CÓDIGO      */
+            /* ========================================================= */
+            <div className="space-y-4 py-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300">
+                  HU-02 • Épica EP-01
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">
+                  Vinculación Activa
+                </span>
               </div>
-              <div className="flex-1">
-                <div className="font-bold text-rose-900 text-xs">Aviso de Registro</div>
-                <p className="mt-0.5 text-rose-700 leading-snug font-medium text-[11px]">
-                  {registerError}
-                </p>
-                {registerError.includes('ya está registrado') && (
+
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <i data-lucide="mail-check" className="w-6 h-6 text-orange-600"></i>
+                <span>Verificación de Identidad por Código</span>
+              </h2>
+
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Para activar tu cuenta y confirmar tu vinculación activa con la I.U. Pascual Bravo, ingresa el código numérico de 6 dígitos enviado a:
+              </p>
+
+              <div className="p-2.5 bg-orange-50 border border-orange-200 rounded-xl text-xs font-bold text-orange-950 flex items-center justify-between">
+                <div className="flex items-center gap-2 truncate">
+                  <i data-lucide="mail" className="w-4 h-4 text-orange-600 shrink-0"></i>
+                  <span className="truncate">{email}</span>
+                </div>
+                <span className="text-[10px] bg-orange-200 text-orange-900 px-2 py-0.5 rounded font-extrabold shrink-0">@pascualbravo</span>
+              </div>
+
+              {/* Simulación Institucional de Correo Recibido */}
+              <div className="p-3.5 bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border-2 border-emerald-300 rounded-2xl shadow-sm text-xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-emerald-900 flex items-center gap-1.5 text-[11.5px]">
+                    <i data-lucide="inbox" className="w-4 h-4 text-emerald-600"></i>
+                    Bandeja Institucional (Simulación Pascual Bravo):
+                  </span>
+                  <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-1.5 py-0.5 rounded">Ahora</span>
+                </div>
+                <div className="bg-white/90 p-2.5 rounded-xl border border-emerald-200 flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10.5px] text-slate-500 block">Código de activación institucional:</span>
+                    <span className="font-mono text-xl font-black text-emerald-700 tracking-[0.2em]">{generatedCode}</span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
+                      setVerificationCode(generatedCode);
                       setRegisterError('');
-                      if (onSwitchToLogin) onSwitchToLogin();
                     }}
-                    className="mt-1.5 text-[11px] font-bold text-orange-600 hover:text-orange-700 underline flex items-center gap-1 cursor-pointer"
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition active:scale-95 shadow-xs flex items-center gap-1"
                   >
-                    <span>Ir a Iniciar Sesión</span>
-                    <i data-lucide="arrow-right" className="w-3 h-3"></i>
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {/* Selector de Perfil: Conductor vs Estudiante */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                Tipo de cuenta
-              </label>
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setAccountType('conductor')}
-                  className={`p-2.5 rounded-xl border text-left transition flex items-start gap-2 active:scale-95 ${
-                    accountType === 'conductor'
-                      ? 'border-[#f25019] bg-orange-50 text-slate-900 shadow-sm ring-1 ring-orange-400'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50/20'
-                  }`}
-                >
-                  <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${accountType === 'conductor' ? 'bg-[#f25019] text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    <i data-lucide="car" className="w-3.5 h-3.5"></i>
-                  </div>
-                  <div>
-                    <span className="font-bold text-xs block text-slate-900 leading-tight">Conductor</span>
-                    <span className="text-[9.5px] text-slate-500 leading-tight block mt-0.5">Ofrece viajes y administra tus rutas</span>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setAccountType('estudiante')}
-                  className={`p-2.5 rounded-xl border text-left transition flex items-start gap-2 active:scale-95 ${
-                    accountType === 'estudiante'
-                      ? 'border-[#f25019] bg-orange-50 text-slate-900 shadow-sm ring-1 ring-orange-400'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50/20'
-                  }`}
-                >
-                  <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${accountType === 'estudiante' ? 'bg-[#f25019] text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    <i data-lucide="book-open" className="w-3.5 h-3.5"></i>
-                  </div>
-                  <div>
-                    <span className="font-bold text-xs block text-slate-900 leading-tight">Estudiante</span>
-                    <span className="text-[9.5px] text-slate-500 leading-tight block mt-0.5">Reserva asientos y viaja a la universidad</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Nombre y Apellido */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Nombre</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Tu nombre" 
-                  value={firstName} 
-                  onChange={(e) => setFirstName(e.target.value)} 
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Apellido</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Tu apellido" 
-                  value={lastName} 
-                  onChange={(e) => setLastName(e.target.value)} 
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
-                />
-              </div>
-            </div>
-
-            {/* Correo Electrónico Institucional */}
-            <div>
-              <label className="block text-[11px] font-semibold text-slate-700 mb-1">Correo electrónico institucional</label>
-              <input 
-                type="email" 
-                required 
-                placeholder="ejemplo@pascualbravo.edu.co" 
-                value={email} 
-                onChange={(e) => setEmail(e.target.value)} 
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
-              />
-            </div>
-
-            {/* Universidad / Facultad y Teléfono */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Universidad / Carrera</label>
-                <select 
-                  value={faculty} 
-                  onChange={(e) => setFaculty(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
-                >
-                  <option value="Tecnología en Desarrollo de Software">Software</option>
-                  <option value="Ingeniería Mecánica">Ing. Mecánica</option>
-                  <option value="Ingeniería Industrial">Ing. Industrial</option>
-                  <option value="Tecnología Eléctrica">Eléctrica</option>
-                  <option value="Diseño Gráfico">Diseño Gráfico</option>
-                  <option value="Otra Carrera">Otra Carrera</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Teléfono</label>
-                <input 
-                  type="tel" 
-                  placeholder="300 123 4567" 
-                  value={phone} 
-                  onChange={(e) => setPhone(e.target.value)} 
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
-                />
-              </div>
-            </div>
-
-            {/* Si es conductor: Datos del vehículo */}
-            {accountType === 'conductor' && (
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Vehículo (Marca, Modelo, Placa)</label>
-                <input 
-                  type="text" 
-                  placeholder="Ej: Chevrolet Onix • PBV-202" 
-                  value={vehicle} 
-                  onChange={(e) => setVehicle(e.target.value)} 
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
-                />
-              </div>
-            )}
-
-            {/* Contraseña y Confirmar Contraseña */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Contraseña</label>
-                <div className="relative">
-                  <input 
-                    type={showPassword ? 'text' : 'password'} 
-                    required 
-                    placeholder="••••••••" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019] pr-8" 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
-                  >
-                    <i data-lucide={showPassword ? "eye-off" : "eye"} className="w-3.5 h-3.5"></i>
+                    <i data-lucide="copy-check" className="w-3.5 h-3.5"></i>
+                    <span>Autocompletar</span>
                   </button>
                 </div>
               </div>
 
+              {/* Mensaje de Error en Código */}
+              {registerError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-300 rounded-xl text-rose-900 text-xs font-medium flex items-center gap-2">
+                  <i data-lucide="alert-circle" className="w-4 h-4 text-rose-600 shrink-0"></i>
+                  <span>{registerError}</span>
+                </div>
+              )}
+
+              {/* Entrada de Código OTP */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Confirmar contraseña</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 text-center">
+                  Ingresa los 6 dígitos del código de verificación:
+                </label>
                 <input 
-                  type={showPassword ? 'text' : 'password'} 
-                  required 
-                  placeholder="••••••••" 
-                  value={confirmPassword} 
-                  onChange={(e) => setConfirmPassword(e.target.value)} 
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+                  type="text" 
+                  maxLength={6}
+                  value={verificationCode} 
+                  onChange={(e) => {
+                    setVerificationCode(e.target.value.replace(/\D/g, ''));
+                    setRegisterError('');
+                  }} 
+                  placeholder="000000" 
+                  className="w-full text-center font-mono text-2xl font-black tracking-[0.35em] py-3 px-4 bg-white border-2 border-orange-300 rounded-2xl text-slate-900 focus:outline-none focus:border-[#f25019] focus:ring-4 focus:ring-orange-500/20 shadow-inner" 
                 />
               </div>
+
+              {/* Botón Confirmar Verificación */}
+              <button 
+                type="button" 
+                onClick={handleConfirmVerification}
+                className="btn-primary-orange w-full py-3 rounded-xl text-white font-bold text-xs shadow-lg flex items-center justify-center gap-2 active:scale-95"
+              >
+                <i data-lucide="check-circle-2" className="w-4 h-4"></i>
+                <span>Activar Cuenta y Confirmar Vinculación (HU-02)</span>
+              </button>
+
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setRegStep('form')}
+                  className="text-slate-500 hover:text-slate-800 font-semibold flex items-center gap-1"
+                >
+                  <i data-lucide="arrow-left" className="w-3.5 h-3.5"></i>
+                  <span>Modificar mis datos</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={resendTimer > 0}
+                  onClick={handleResendCode}
+                  className={`font-bold transition ${
+                    resendTimer > 0 
+                      ? 'text-slate-400 cursor-not-allowed' 
+                      : 'text-orange-600 hover:text-orange-700 underline'
+                  }`}
+                >
+                  {resendTimer > 0 ? `Reenviar código en ${resendTimer}s` : '¿No recibiste el código? Reenviar'}
+                </button>
+              </div>
             </div>
-
-            {/* Casilla de aceptación de condiciones */}
-            <div className="flex items-start gap-2 pt-1">
-              <input 
-                type="checkbox" 
-                id="terms" 
-                checked={acceptedTerms} 
-                onChange={(e) => setAcceptedTerms(e.target.checked)} 
-                className="mt-0.5 rounded text-[#f25019] focus:ring-[#f25019]" 
-              />
-              <label htmlFor="terms" className="text-[10.5px] text-slate-600 leading-tight">
-                Acepto los términos y condiciones y la política de privacidad de RutaU.
-              </label>
-            </div>
-
-            {/* Botón Crear Cuenta */}
-            <button 
-              type="submit" 
-              className="btn-primary-orange w-full py-2.5 rounded-lg text-white font-bold text-xs shadow-md mt-2 flex items-center justify-center gap-2 active:scale-95"
-            >
-              <span>Crear cuenta</span>
-              <i data-lucide="arrow-right" className="w-3.5 h-3.5"></i>
-            </button>
-          </form>
-
-          <p className="text-xs text-center text-slate-600 mt-4">
-            ¿Ya tienes cuenta? 
-            <a 
-              href="javascript:void(0)" 
-              onClick={onSwitchToLogin}
-              className="font-bold text-[#ae4700] hover:underline ml-1 cursor-pointer"
-            >
-              Inicia sesión
-            </a>
-          </p>
+          )}
         </div>
 
-        {/* Lado Derecho: Ilustración Dinámica que Cambia según Perfil */}
+        {/* Lado Derecho: Ilustración Dinámica */}
         <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4">
           <div className="relative group text-center transition-all duration-500">
             <img 
@@ -2966,6 +3293,271 @@ function AuthRegisterModal({ isOpen, onClose, onRegister, onSwitchToLogin, curre
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================================================
+// 6.2 COMPONENTE: InstitutionalProfileModal (HU-03: Configuración de Perfil Institucional)
+// ==========================================================================
+function InstitutionalProfileModal({ isOpen, onClose, currentUser, onUpdateProfile, addToast }) {
+  if (!isOpen || !currentUser) return null;
+
+  const [fullName, setFullName] = useState(currentUser.full_name || '');
+  const [faculty, setFaculty] = useState(currentUser.faculty || 'Tecnología en Desarrollo de Software');
+  const [role, setRole] = useState(currentUser.role || 'estudiante');
+  const [residentialZone, setResidentialZone] = useState(currentUser.residential_zone || 'Robledo (Pilarica, San Germán)');
+  const [preferredCampus, setPreferredCampus] = useState(currentUser.preferred_campus || 'Campus Robledo');
+  const [phone, setPhone] = useState(currentUser.phone || '');
+  const [vehicleBrand, setVehicleBrand] = useState(currentUser.vehicle?.brand || '');
+  const [vehiclePlate, setVehiclePlate] = useState(currentUser.vehicle?.plate || '');
+  const [vehicleCapacity, setVehicleCapacity] = useState(currentUser.vehicle?.capacity || 4);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!fullName.trim()) {
+      addToast('El nombre no puede estar vacío.', 'error');
+      return;
+    }
+
+    const updatedUser = {
+      ...currentUser,
+      full_name: fullName.trim(),
+      faculty: faculty,
+      role: role,
+      residential_zone: residentialZone,
+      preferred_campus: preferredCampus,
+      phone: phone.trim(),
+      vehicle: role === 'conductor' ? {
+        type: currentUser.vehicle?.type || 'auto',
+        brand: vehicleBrand.trim() || 'Vehículo Registrado',
+        plate: vehiclePlate.trim().toUpperCase() || 'PBV-000',
+        color: currentUser.vehicle?.color || 'Blanco',
+        capacity: Number(vehicleCapacity) || 4
+      } : null
+    };
+
+    onUpdateProfile(updatedUser);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto font-poppins">
+      <div className="relative w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-orange-200 my-auto text-slate-800">
+        {/* Botón Cerrar */}
+        <button 
+          onClick={onClose}
+          className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition"
+        >
+          <i data-lucide="x" className="w-5 h-5"></i>
+        </button>
+
+        {/* Cabecera del Perfil */}
+        <div className="flex items-center gap-3.5 mb-6 pb-4 border-b border-orange-100">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#f25019] to-orange-400 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-orange-500/25 shrink-0">
+            {fullName.split(' ').map(n => n[0]).slice(0, 2).join('')}
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Mi Perfil Institucional
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-900 border border-orange-300">
+                HU-03 • EP-01
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium flex items-center gap-1.5 flex-wrap">
+              <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                <i data-lucide="shield-check" className="w-3.5 h-3.5 text-emerald-600"></i>
+                Vinculación Activa Verificada (HU-02)
+              </span>
+              <span>•</span>
+              <span>I.U. Pascual Bravo</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Formulario de Configuración de Perfil (HU-03) */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Bloque 1: Identificación y Correo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Nombre Completo *</label>
+              <input 
+                type="text" 
+                required 
+                value={fullName} 
+                onChange={(e) => setFullName(e.target.value)} 
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Correo Institucional</span>
+                <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5">
+                  <i data-lucide="check" className="w-3 h-3"></i> Verificado
+                </span>
+              </label>
+              <input 
+                type="email" 
+                disabled 
+                value={currentUser.email} 
+                className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 cursor-not-allowed font-medium" 
+              />
+            </div>
+          </div>
+
+          {/* Bloque 2: Facultad y Sede */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                <span>Facultad / Programa Académico *</span>
+                <span className="text-[10px] font-bold text-orange-600">HU-03</span>
+              </label>
+              <select 
+                value={faculty} 
+                onChange={(e) => setFaculty(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
+              >
+                <option value="Tecnología en Desarrollo de Software">Tecnología en Desarrollo de Software</option>
+                <option value="Facultad de Ingeniería">Facultad de Ingeniería</option>
+                <option value="Facultad de Producción y Diseño">Facultad de Producción y Diseño</option>
+                <option value="Ingeniería Mecánica">Ingeniería Mecánica</option>
+                <option value="Ingeniería Eléctrica y Electrónica">Ingeniería Eléctrica y Electrónica</option>
+                <option value="Ingeniería Industrial">Ingeniería Industrial</option>
+                <option value="Diseño Gráfico / Textil">Diseño Gráfico / Textil</option>
+                <option value="Otra Carrera Institucional">Otra Carrera Institucional</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Sede de Salida Habitual</label>
+              <select 
+                value={preferredCampus} 
+                onChange={(e) => setPreferredCampus(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
+              >
+                <option value="Campus Robledo">Campus Robledo (Calle 73 #73A-226)</option>
+                <option value="Ciudadela C4TA San Javier">Ciudadela Universitaria C4TA San Javier</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Bloque 3: Zona Residencial de Destino (REQUERIMIENTO CLAVE HU-03) */}
+          <div className="bg-[#fff9f5] p-4 rounded-2xl border border-orange-200/80">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <i data-lucide="map-pin" className="w-4 h-4 text-orange-600"></i>
+                <span>Zona Residencial de Destino Habitual * (HU-03)</span>
+              </label>
+              <span className="text-[10px] bg-orange-100 text-orange-900 px-2 py-0.5 rounded-full font-bold">
+                Coincidencias Automáticas
+              </span>
+            </div>
+            <select 
+              value={residentialZone} 
+              onChange={(e) => setResidentialZone(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white border border-orange-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="Robledo (Pilarica, San Germán)">Robledo (Pilarica, San Germán, La Pola)</option>
+              <option value="Bello">Bello (Niquía, Cabañas, Centro)</option>
+              <option value="Laureles / San Javier">Laureles / San Javier / Estadio</option>
+              <option value="Castilla / Santander">Castilla / Doce de Octubre / Santander</option>
+              <option value="Envigado / Sabaneta">Envigado / Sabaneta</option>
+              <option value="Itagüí">Itagüí / Ditaires / San Antonio</option>
+              <option value="San Javier / Comuna 13">San Javier / Santa Mónica / Comuna 13</option>
+              <option value="El Poblado">El Poblado / Manila / Provenza</option>
+              <option value="Buenos Aires / Boston">Buenos Aires / Boston / Miraflores</option>
+              <option value="Calasanz / Floresta">Calasanz / Ferrini / Floresta</option>
+            </select>
+            <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
+              🎯 <strong>Criterio HU-03:</strong> Al configurar tu zona residencial, la cartelera nocturna destacará automáticamente trayectos hacia tu barrio con el badge <span className="text-orange-700 font-bold">"Coincide con tu zona residencial"</span> y te permitirá filtrarlos en un clic.
+            </p>
+          </div>
+
+          {/* Bloque 4: Rol y Datos de Conductor */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Rol en la Comunidad</label>
+              <select 
+                value={role} 
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]"
+              >
+                <option value="estudiante">Estudiante Pasajero (Reserva cupos)</option>
+                <option value="conductor">Conductor Universitario (Ofrece cupos)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono / WhatsApp de Contacto</label>
+              <input 
+                type="tel" 
+                value={phone} 
+                onChange={(e) => setPhone(e.target.value)} 
+                placeholder="+57 300 000 0000" 
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019] focus:ring-1 focus:ring-[#f25019]" 
+              />
+            </div>
+          </div>
+
+          {/* Si es conductor: Información del Vehículo */}
+          {role === 'conductor' && (
+            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Marca y Modelo</label>
+                <input 
+                  type="text" 
+                  value={vehicleBrand} 
+                  onChange={(e) => setVehicleBrand(e.target.value)} 
+                  placeholder="Ej: Chevrolet Onix" 
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019]" 
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Placa Institucional</label>
+                <input 
+                  type="text" 
+                  value={vehiclePlate} 
+                  onChange={(e) => setVehiclePlate(e.target.value)} 
+                  placeholder="PBV-202" 
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019]" 
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">Capacidad Asientos</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="6" 
+                  value={vehicleCapacity} 
+                  onChange={(e) => setVehicleCapacity(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:border-[#f25019]" 
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Botones de Acción */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition"
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit" 
+              className="btn-primary-orange px-6 py-2.5 rounded-xl text-white text-xs font-bold shadow-md flex items-center gap-2 active:scale-95"
+            >
+              <i data-lucide="save" className="w-4 h-4"></i>
+              <span>Guardar Perfil Institucional (HU-03)</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

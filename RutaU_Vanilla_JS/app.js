@@ -436,6 +436,18 @@ function renderTripCard(trip) {
   const taxiEstimate = Math.round(trip.suggested_seat_price * 4.2);
   const savingsPercent = Math.round(((taxiEstimate - trip.suggested_seat_price) / taxiEstimate) * 100);
 
+  // Coincidencia con zona residencial del usuario (HU-03)
+  const user = RUTA_U_STATE.currentUser;
+  const userZone = user?.residential_zone ? user.residential_zone.toLowerCase() : '';
+  const matchesMyZone = Boolean(
+    userZone && (
+      trip.destination_zone.toLowerCase().includes(userZone) ||
+      userZone.includes(trip.destination_zone.toLowerCase()) ||
+      (trip.destination_address && trip.destination_address.toLowerCase().includes(userZone)) ||
+      (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(userZone)))
+    )
+  );
+
   return `
     <div class="glass-panel p-5 flex flex-col justify-between hover:border-slate-600 transition group relative">
       <div>
@@ -463,11 +475,21 @@ function renderTripCard(trip) {
           <!-- Cupos Badge -->
           <div class="text-right">
             <span class="px-2.5 py-1 rounded-full text-xs font-bold ${isFull ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'} flex items-center gap-1">
-              <i data-lucide="users" class="w-3.5 h-3.5"></i>
+              <i data-lucide="users" className="w-3.5 h-3.5"></i>
               ${isFull ? 'COMPLETO' : `${trip.available_seats} de ${trip.total_seats} cupos`}
             </span>
           </div>
         </div>
+
+        ${matchesMyZone ? `
+          <div class="mb-3 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center justify-between">
+            <span class="flex items-center gap-1.5">
+              <span>🎯</span>
+              <span>Coincide con tu zona residencial (${user.residential_zone})</span>
+            </span>
+            <span class="text-[10px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded font-extrabold">HU-03</span>
+          </div>
+        ` : ''}
 
         <!-- Ruta y Punto de Encuentro -->
         <div class="space-y-2.5 my-4 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
@@ -1611,6 +1633,10 @@ function selectUserRole(userId) {
     showToast(`Sesión cambiada a: ${user.full_name} (${user.role})`, 'info');
     renderApp();
   }
+}
+
+function openProfileModal() {
+  switchTab('profile');
 }
 
 // ==========================================

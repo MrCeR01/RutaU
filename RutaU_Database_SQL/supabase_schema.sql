@@ -33,14 +33,16 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT NOT NULL,
     institution TEXT DEFAULT 'Institución Universitaria Pascual Bravo',
     institutional_id TEXT, -- Carnet institucional
-    faculty TEXT NOT NULL, -- Facultad / Carrera
+    faculty TEXT NOT NULL, -- Facultad / Carrera (HU-03: Configuración de perfil institucional)
     role TEXT NOT NULL CHECK (role IN ('pasajero', 'conductor', 'ambos', 'docente', 'seguridad_campus')),
-    residential_zone TEXT NOT NULL, -- Zona residencial (ej. Bello, Robledo, Laureles, etc.)
+    residential_zone TEXT NOT NULL, -- Zona residencial habitual (HU-03: Coincidencias de ruta pertinentes)
     phone TEXT,
     avatar_url TEXT,
     rating_average NUMERIC(3,2) DEFAULT 5.00,
     trips_completed INT DEFAULT 0,
-    verified BOOLEAN DEFAULT TRUE,
+    verified BOOLEAN DEFAULT TRUE, -- HU-02: Cuenta activa y verificada con código
+    verification_code TEXT, -- HU-02: Código OTP de 6 dígitos enviado al correo institucional
+    verification_code_expires_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
 
