@@ -10,6 +10,23 @@
 
 const { useState, useEffect, useMemo, useRef } = React;
 
+const DEFAULT_SUPABASE_URL = 'https://ltjefvcwhxvhaftsmzji.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0amVmdmN3aHh2aGFmdHNtemppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU2NTM2OTcsImV4cCI6MjExMTIyOTY5N30.QvVaew0WK--7izpbjxXcuvW5HW38rFNJXHLG9lU4E4Y';
+
+function getSupabaseClient() {
+  try {
+    const url = localStorage.getItem('rutau_supabase_url') || DEFAULT_SUPABASE_URL;
+    const key = localStorage.getItem('rutau_supabase_key') || DEFAULT_SUPABASE_ANON_KEY;
+    if (window.supabase && typeof window.supabase.createClient === 'function' && url && key) {
+      if (!window.rutauSupabaseClient) {
+        window.rutauSupabaseClient = window.supabase.createClient(url, key);
+      }
+      return window.rutauSupabaseClient;
+    }
+  } catch (e) {}
+  return null;
+}
+
 // Base de datos de prueba pre-cargada para demostración inmediata
 const DEFAULT_SEED_DATA = {
   users: [
@@ -483,6 +500,17 @@ function RutaUApp() {
     campus: '',
     onlyMyZone: false
   });
+
+  // Inicializar conexión con Supabase en tiempo real (con respaldo offline en localStorage)
+  useEffect(() => {
+    const client = getSupabaseClient();
+    if (!client) return;
+    client.from('campuses').select('id').limit(1).then(({ error }) => {
+      if (!error) {
+        window.rutauSupabaseConnected = true;
+      }
+    }).catch(() => {});
+  }, []);
 
   // Persistencia de usuarios registrados
   useEffect(() => {
@@ -5192,9 +5220,9 @@ function SosModal({ isOpen, onClose, currentUser, onLogSos, addToast }) {
 // 11. COMPONENTE: SupabaseModal (Configuración de Base de Datos)
 // ==========================================================================
 function SupabaseModal({ isOpen, onClose, addToast }) {
-  const [url, setUrl] = useState(() => localStorage.getItem('rutau_supabase_url') || '');
-  const [key, setKey] = useState(() => localStorage.getItem('rutau_supabase_key') || '');
-  const [status, setStatus] = useState('Listo para conectar');
+  const [url, setUrl] = useState(() => localStorage.getItem('rutau_supabase_url') || DEFAULT_SUPABASE_URL);
+  const [key, setKey] = useState(() => localStorage.getItem('rutau_supabase_key') || DEFAULT_SUPABASE_ANON_KEY);
+  const [status, setStatus] = useState(() => window.rutauSupabaseConnected ? 'Conectado en Tiempo Real a Supabase' : 'Listo para verificar conexión');
 
   if (!isOpen) return null;
 
