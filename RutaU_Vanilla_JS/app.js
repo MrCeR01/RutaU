@@ -444,7 +444,7 @@ function renderTripCard(trip) {
       trip.destination_zone.toLowerCase().includes(userZone) ||
       userZone.includes(trip.destination_zone.toLowerCase()) ||
       (trip.destination_address && trip.destination_address.toLowerCase().includes(userZone)) ||
-      (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(userZone)))
+      (trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(userZone)))
     )
   );
 

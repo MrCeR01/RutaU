@@ -442,6 +442,22 @@ function RutaUApp() {
       return DEFAULT_SEED_DATA.bookings;
     }
   });
+  const [reviews, setReviews] = useState(() => {
+    try {
+      const stored = localStorage.getItem('rutau_reviews');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+  const [sosAlerts, setSosAlerts] = useState(() => {
+    try {
+      const stored = localStorage.getItem('rutau_sos_alerts');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [toasts, setToasts] = useState([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -476,6 +492,16 @@ function RutaUApp() {
       localStorage.setItem('rutau_bookings', JSON.stringify(bookings));
     } catch (e) {}
   }, [bookings]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('rutau_reviews', JSON.stringify(reviews));
+    } catch (e) {}
+  }, [reviews]);
+  useEffect(() => {
+    try {
+      localStorage.setItem('rutau_sos_alerts', JSON.stringify(sosAlerts));
+    } catch (e) {}
+  }, [sosAlerts]);
   useEffect(() => {
     if (currentUser && jwtToken) {
       try {
@@ -704,8 +730,117 @@ function RutaUApp() {
     addToast('¡Trayecto publicado con éxito en la cartelera nocturna!', 'success');
   };
   const shareTripOnWhatsApp = trip => {
-    const text = encodeURIComponent(`🚗 *RutaU Pascual Bravo | Carpooling Universitario*\n` + `Conductor: ${trip.driver_name} (@pascualbravo)\n` + `📍 Salida: ${trip.origin_meeting_point}\n` + `🎯 Destino: ${trip.destination_zone} (${trip.destination_address})\n` + `⏰ Hora salida: ${trip.departure_time} hrs\n` + `⛽ Aporte gasolina: $${trip.suggested_seat_price.toLocaleString('es-CO')} COP\n` + `💺 Cupos disponibles: ${trip.available_seats} de ${trip.total_seats}\n\n` + `_Reserva tu cupo con correo de dominio institucional en RutaU._`);
+    const text = encodeURIComponent(`🚗 *RutaU Pascual Bravo | Carpooling Universitario*\n` + `Conductor: ${trip.driver_name} (@pascualbravo)\n` + `📍 Salida: ${trip.origin_meeting_point}\n` + `🎯 Destino: ${trip.destination_zone} (${trip.destination_address})\n` + `⏰ Hora salida: ${trip.departure_time} hrs\n` + `⛽ Aporte gasolina: ${trip.suggested_seat_price.toLocaleString('es-CO')} COP\n` + `💺 Cupos disponibles: ${trip.available_seats} de ${trip.total_seats}\n\n` + `_Reserva tu cupo con correo de dominio institucional en RutaU._`);
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
+  const shareSafeArrivalOnWhatsApp = (trip, booking) => {
+    const passengerName = currentUser ? currentUser.full_name : booking?.passenger_name || 'Estudiante Pascual Bravo';
+    const stopInfo = booking?.stop_requested && booking.stop_requested !== 'Destino Final' ? booking.stop_requested : `${trip?.destination_zone || 'Destino'} (${trip?.destination_address || 'Punto acordado'})`;
+    const text = encodeURIComponent(`✅ *RutaU Pascual Bravo | Reporte de Llegada Segura*\n` + `Estudiante: ${passengerName}\n` + `📍 Punto de llegada: ${stopInfo}\n` + `🚗 Conductor: ${trip?.driver_name || 'Comunidad Institucional'} (${trip?.vehicle_summary || 'Vehículo verificado'})\n` + `🕒 Hora de reporte: ${new Date().toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })}\n\n` + `_He llegado bien a mi destino gracias a la red de movilidad colaborativa RutaU._`);
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+    addToast('Abriendo WhatsApp con tu reporte de llegada segura.', 'success');
+  };
+  const handleCancelBooking = bookingId => {
+    const target = bookings.find(b => b.id === bookingId);
+    if (!target) return;
+    setBookings(prev => prev.filter(b => b.id !== bookingId));
+    setTrips(prev => prev.map(t => {
+      if (t.id === target.trip_id) {
+        const updatedStops = (t.stops || []).filter(s => s.passenger_id !== target.passenger_id);
+        return {
+          ...t,
+          available_seats: Math.min(t.total_seats, t.available_seats + 1),
+          stops: updatedStops
+        };
+      }
+      return t;
+    }));
+    addToast('Reserva cancelada. El cupo y la parada intermedia han quedado disponibles nuevamente.', 'info');
+  };
+  const handleUpdateTripStatus = (tripId, newStatus) => {
+    setTrips(prev => prev.map(t => t.id === tripId ? {
+      ...t,
+      status: newStatus
+    } : t));
+    if (newStatus === 'finalizado') {
+      addToast('¡Trayecto marcado como finalizado! Tus pasajeros ya pueden calificar el viaje.', 'success');
+    } else if (newStatus === 'cancelado') {
+      addToast('Trayecto cancelado. Los pasajeros inscritos serán notificados.', 'info');
+    }
+  };
+  const handleSubmitReview = ({
+    targetUserId,
+    tripId,
+    rating,
+    punctuality,
+    respect,
+    comment
+  }) => {
+    const newReview = {
+      id: `rev-${Date.now()}`,
+      trip_id: tripId || null,
+      reviewer_id: currentUser ? currentUser.id : 'usr-anon',
+      reviewer_name: currentUser ? currentUser.full_name : 'Estudiante Pascual Bravo',
+      reviewee_id: targetUserId,
+      rating,
+      punctuality_rating: punctuality,
+      respect_rating: respect,
+      comment: comment || '',
+      created_at: new Date().toISOString()
+    };
+    const updatedReviews = [newReview, ...reviews];
+    setReviews(updatedReviews);
+
+    // Recalcular promedio de reputación del usuario evaluado
+    const userReviews = updatedReviews.filter(r => r.reviewee_id === targetUserId);
+    const targetUser = registeredUsers.find(u => u.id === targetUserId);
+    const baseRating = targetUser ? targetUser.rating_average || 5.0 : 5.0;
+    const sumReviews = userReviews.reduce((acc, r) => acc + r.rating, 0);
+    // Ponderar calificación base inicial + nuevas reseñas reales
+    const newAvg = Number(((baseRating + sumReviews) / (1 + userReviews.length)).toFixed(1));
+    setRegisteredUsers(prev => prev.map(u => u.id === targetUserId ? {
+      ...u,
+      rating_average: newAvg
+    } : u));
+    setTrips(prev => prev.map(t => t.driver_id === targetUserId ? {
+      ...t,
+      driver_rating: newAvg
+    } : t));
+    if (currentUser && currentUser.id === targetUserId) {
+      setCurrentUser(prev => ({
+        ...prev,
+        rating_average: newAvg
+      }));
+    }
+  };
+  const handleLogSosAlert = ({
+    campusLabel,
+    coords
+  }) => {
+    const newAlert = {
+      id: `sos-${Date.now()}`,
+      user_id: currentUser ? currentUser.id : 'usr-invitado',
+      user_name: currentUser ? currentUser.full_name : 'Estudiante Verificado',
+      campus: campusLabel || 'Campus Robledo Calle 73',
+      coords: coords || {
+        lat: 6.2755,
+        lng: -75.5908
+      },
+      status: 'activa',
+      created_at: new Date().toISOString()
+    };
+    setSosAlerts(prev => [newAlert, ...prev]);
+  };
+  const handleResolveSosAlert = (alertId, newStatus) => {
+    setSosAlerts(prev => prev.map(a => a.id === alertId ? {
+      ...a,
+      status: newStatus,
+      resolved_at: new Date().toISOString()
+    } : a));
+    addToast(newStatus === 'atendida' ? 'Alerta marcada como atendida por vigilancia.' : 'Alerta cerrada como falsa alarma.', 'info');
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "min-h-screen flex flex-col selection:bg-orange-500/20 selection:text-orange-900"
@@ -761,11 +896,19 @@ function RutaUApp() {
   }), activeTab === 'my-trips' && /*#__PURE__*/React.createElement(MyTripsView, {
     trips: trips,
     bookings: bookings,
+    reviews: reviews,
     currentUser: currentUser,
     onOpenLogin: () => setIsLoginModalOpen(true),
-    onShareWhatsApp: shareTripOnWhatsApp
+    onShareWhatsApp: shareTripOnWhatsApp,
+    onShareSafeArrival: shareSafeArrivalOnWhatsApp,
+    onCancelBooking: handleCancelBooking,
+    onUpdateTripStatus: handleUpdateTripStatus,
+    onSubmitReview: handleSubmitReview,
+    addToast: addToast
   }), activeTab === 'security' && /*#__PURE__*/React.createElement(CampusSecurityView, {
-    onOpenSos: () => setIsSosModalOpen(true)
+    onOpenSos: () => setIsSosModalOpen(true),
+    sosAlerts: sosAlerts,
+    onResolveSosAlert: handleResolveSosAlert
   })), /*#__PURE__*/React.createElement(Footer, null), /*#__PURE__*/React.createElement(MobileBottomNav, {
     activeTab: activeTab,
     onSwitchTab: setActiveTab,
@@ -807,6 +950,7 @@ function RutaUApp() {
     isOpen: isSosModalOpen,
     onClose: () => setIsSosModalOpen(false),
     currentUser: currentUser,
+    onLogSos: handleLogSosAlert,
     addToast: addToast
   }), isSupabaseModalOpen && /*#__PURE__*/React.createElement(SupabaseModal, {
     isOpen: isSupabaseModalOpen,
@@ -1931,7 +2075,7 @@ function TripFeed({
       const matchCampus = !filters.campus || filters.campus === 'c4ta' && (trip.origin_campus === 'c4ta' || (trip.origin_meeting_point || '').toLowerCase().includes('c4ta') || (trip.origin_meeting_point || '').toLowerCase().includes('san javier')) || filters.campus === 'robledo' && trip.origin_campus !== 'c4ta' && !(trip.origin_meeting_point || '').toLowerCase().includes('c4ta') && !(trip.origin_meeting_point || '').toLowerCase().includes('san javier');
       const userZone = currentUser?.residential_zone ? currentUser.residential_zone.toLowerCase() : '';
       const zoneKeywords = userZone ? userZone.split(/[\s,()\/]+/).filter(w => w.length > 3) : [];
-      const matchMyZone = !filters.onlyMyZone || !userZone || trip.destination_zone.toLowerCase().includes(userZone) || userZone.includes(trip.destination_zone.toLowerCase()) || trip.destination_address && trip.destination_address.toLowerCase().includes(userZone) || trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(userZone)) || zoneKeywords.some(kw => trip.destination_zone.toLowerCase().includes(kw) || trip.destination_address && trip.destination_address.toLowerCase().includes(kw) || trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(kw)));
+      const matchMyZone = !filters.onlyMyZone || !userZone || trip.destination_zone.toLowerCase().includes(userZone) || userZone.includes(trip.destination_zone.toLowerCase()) || trip.destination_address && trip.destination_address.toLowerCase().includes(userZone) || trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(userZone)) || zoneKeywords.some(kw => trip.destination_zone.toLowerCase().includes(kw) || trip.destination_address && trip.destination_address.toLowerCase().includes(kw) || trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(kw)));
       return matchZone && matchFaculty && matchTime && matchCampus && matchMyZone;
     });
   }, [trips, filters, currentUser]);
@@ -2183,7 +2327,7 @@ function TripCard({
   // Coincidencia con zona residencial del usuario autenticado (HU-03)
   const userZone = currentUser?.residential_zone ? currentUser.residential_zone.toLowerCase() : '';
   const zoneKeywords = userZone ? userZone.split(/[\s,()\/]+/).filter(w => w.length > 3) : [];
-  const matchesMyZone = Boolean(userZone && (trip.destination_zone.toLowerCase().includes(userZone) || userZone.includes(trip.destination_zone.toLowerCase()) || trip.destination_address && trip.destination_address.toLowerCase().includes(userZone) || trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(userZone)) || zoneKeywords.some(kw => trip.destination_zone.toLowerCase().includes(kw) || trip.destination_address && trip.destination_address.toLowerCase().includes(kw) || trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(kw)))));
+  const matchesMyZone = Boolean(userZone && (trip.destination_zone.toLowerCase().includes(userZone) || userZone.includes(trip.destination_zone.toLowerCase()) || trip.destination_address && trip.destination_address.toLowerCase().includes(userZone) || trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(userZone)) || zoneKeywords.some(kw => trip.destination_zone.toLowerCase().includes(kw) || trip.destination_address && trip.destination_address.toLowerCase().includes(kw) || trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(kw)))));
   return /*#__PURE__*/React.createElement("div", {
     className: `glass-panel p-5 flex flex-col justify-between bg-white border rounded-2xl shadow-sm hover:border-orange-300 hover:shadow-xl transition-all duration-200 group text-slate-800 ${isSelected ? 'border-[#f25019] ring-2 ring-orange-500/20 shadow-md bg-orange-50/20' : 'border-orange-100'}`,
     onClick: () => onFocusOnMap && onFocusOnMap(trip.id)
@@ -3684,7 +3828,24 @@ function PublishForm({
     value: vehicle,
     onChange: e => setVehicle(e.target.value),
     className: "w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-[#f25019]"
-  }))), /*#__PURE__*/React.createElement("p", {
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "p-3 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl text-xs"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-1"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-bold text-emerald-900 flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "fuel",
+    className: "w-3.5 h-3.5 text-emerald-600"
+  }), /*#__PURE__*/React.createElement("span", null, "Estimaci\xF3n Solidaria de Combustible")), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px] font-extrabold bg-emerald-200/80 text-emerald-950 px-2 py-0.5 rounded-full"
+  }, "Ahorro ~", Math.round((Math.round((Number(price) || 3500) * 4.2) - (Number(price) || 3500)) / Math.round((Number(price) || 3500) * 4.2) * 100), "% vs Taxi")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between text-[11px] text-slate-600"
+  }, /*#__PURE__*/React.createElement("span", null, "Aporte por cupo: ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-emerald-700"
+  }, "$", (Number(price) || 0).toLocaleString('es-CO'), " COP")), /*#__PURE__*/React.createElement("span", null, "Recaudo m\xE1x. (", seats, " cupos): ", /*#__PURE__*/React.createElement("strong", {
+    className: "text-slate-900"
+  }, "$", ((Number(price) || 0) * (Number(seats) || 1)).toLocaleString('es-CO'), " COP")))), /*#__PURE__*/React.createElement("p", {
     className: "text-[11px] text-slate-500 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/70"
   }, "\uD83D\uDCA1 ", /*#__PURE__*/React.createElement("strong", null, "Paradas intermedias:"), " Cada uno de tus pasajeros podr\xE1 solicitar 1 parada en el camino durante su reserva (hasta un m\xE1ximo de 3 paradas por viaje)."), /*#__PURE__*/React.createElement("button", {
     type: "submit",
@@ -4137,13 +4298,18 @@ function ReviewRatingModal({
 function MyTripsView({
   trips,
   bookings,
+  reviews,
   currentUser,
   onOpenLogin,
   onShareWhatsApp,
+  onShareSafeArrival,
+  onCancelBooking,
+  onUpdateTripStatus,
+  onSubmitReview,
   addToast
 }) {
   const [selectedReceiptData, setSelectedReceiptData] = useState(null); // { booking, trip }
-  const [reviewTargetUser, setReviewTargetUser] = useState(null); // { id, name }
+  const [reviewTargetUser, setReviewTargetUser] = useState(null); // { id, name, tripId }
 
   if (!currentUser) {
     return /*#__PURE__*/React.createElement("div", {
@@ -4165,12 +4331,19 @@ function MyTripsView({
   return /*#__PURE__*/React.createElement("div", {
     className: "space-y-6"
   }, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between"
+    className: "flex items-center justify-between flex-wrap gap-2"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h1", {
     className: "text-2xl font-bold text-slate-900"
   }, "Mis Trayectos Universitarios"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-500 font-medium"
-  }, "Historial y gesti\xF3n de cupos de ", currentUser.full_name))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+  }, "Historial y gesti\xF3n de cupos de ", currentUser.full_name)), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2 text-xs"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 font-bold flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "star",
+    className: "w-3.5 h-3.5 fill-amber-500 text-amber-500"
+  }), "Reputaci\xF3n: ", Number(currentUser.rating_average || 5).toFixed(1)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
     className: "text-lg font-bold text-emerald-800 mb-3 flex items-center gap-2"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "bookmark",
@@ -4181,6 +4354,7 @@ function MyTripsView({
     className: "grid grid-cols-1 md:grid-cols-2 gap-4"
   }, myBookings.map(b => {
     const trip = trips.find(t => t.id === b.trip_id);
+    const alreadyReviewed = trip && reviews && reviews.some(r => r.trip_id === trip.id && r.reviewer_id === currentUser.id && r.reviewee_id === trip.driver_id);
     return /*#__PURE__*/React.createElement("div", {
       key: b.id,
       className: "glass-panel p-4 flex flex-col justify-between bg-white border border-orange-100 rounded-2xl shadow-sm"
@@ -4194,7 +4368,9 @@ function MyTripsView({
       className: "text-xs text-slate-600"
     }, "Conductor: ", /*#__PURE__*/React.createElement("strong", {
       className: "text-slate-900"
-    }, trip ? trip.driver_name : 'Compañero')), /*#__PURE__*/React.createElement("p", {
+    }, trip ? trip.driver_name : 'Compañero'), trip && /*#__PURE__*/React.createElement("span", {
+      className: "ml-1.5 text-amber-600 font-bold"
+    }, "\u2605 ", trip.driver_rating)), /*#__PURE__*/React.createElement("p", {
       className: "text-xs text-slate-600 mt-1"
     }, "Salida: ", /*#__PURE__*/React.createElement("strong", {
       className: "text-orange-600 font-bold"
@@ -4204,7 +4380,7 @@ function MyTripsView({
       "data-lucide": "signpost",
       className: "w-3.5 h-3.5 text-amber-600 shrink-0"
     }), /*#__PURE__*/React.createElement("span", null, "Tu parada: ", /*#__PURE__*/React.createElement("strong", null, b.stop_requested)))), /*#__PURE__*/React.createElement("div", {
-      className: "mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap"
+      className: "mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 flex-wrap"
     }, /*#__PURE__*/React.createElement("button", {
       onClick: () => setSelectedReceiptData({
         booking: b,
@@ -4218,19 +4394,36 @@ function MyTripsView({
     }), /*#__PURE__*/React.createElement("span", null, "Comprobante")), trip && /*#__PURE__*/React.createElement("button", {
       onClick: () => setReviewTargetUser({
         id: trip.driver_id,
-        name: trip.driver_name
+        name: trip.driver_name,
+        tripId: trip.id
       }),
-      className: "py-2 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-amber-200",
+      className: `py-2 px-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border ${alreadyReviewed ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'}`,
       title: "Calificar Conductor"
     }, /*#__PURE__*/React.createElement("i", {
       "data-lucide": "star",
       className: "w-3.5 h-3.5 fill-amber-500 text-amber-500"
-    }), /*#__PURE__*/React.createElement("span", null, "Calificar")), trip && /*#__PURE__*/React.createElement("button", {
+    }), /*#__PURE__*/React.createElement("span", null, alreadyReviewed ? 'Calificado' : 'Calificar')), trip && onShareSafeArrival && /*#__PURE__*/React.createElement("button", {
+      onClick: () => onShareSafeArrival(trip, b),
+      className: "py-2 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95",
+      title: "Reportar Llegada Segura por WhatsApp"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "check-circle-2",
+      className: "w-3.5 h-3.5"
+    }), /*#__PURE__*/React.createElement("span", {
+      className: "hidden sm:inline"
+    }, "Llegu\xE9 Bien")), trip && /*#__PURE__*/React.createElement("button", {
       onClick: () => onShareWhatsApp(trip),
       className: "py-2 px-2.5 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95",
       title: "Compartir ruta en WhatsApp"
     }, /*#__PURE__*/React.createElement("i", {
       "data-lucide": "share-2",
+      className: "w-3.5 h-3.5"
+    })), onCancelBooking && /*#__PURE__*/React.createElement("button", {
+      onClick: () => onCancelBooking(b.id),
+      className: "py-2 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-rose-200",
+      title: "Cancelar Reserva y Liberar Cupo"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "x",
       className: "w-3.5 h-3.5"
     }))));
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
@@ -4242,61 +4435,91 @@ function MyTripsView({
     className: "glass-panel p-6 text-center text-xs text-slate-500 bg-white border border-orange-100"
   }, "A\xFAn no has publicado viajes como conductor.") : /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-1 md:grid-cols-2 gap-4"
-  }, myPublished.map(t => /*#__PURE__*/React.createElement("div", {
-    key: t.id,
-    className: "glass-panel p-4 flex flex-col justify-between bg-white border border-orange-100 rounded-2xl shadow-sm"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center justify-between mb-2"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "font-bold text-slate-900"
-  }, t.destination_zone), /*#__PURE__*/React.createElement("span", {
-    className: "text-xs text-emerald-700 font-bold"
-  }, t.available_seats, " de ", t.total_seats, " cupos libres")), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-600"
-  }, "Salida: ", t.departure_time, " hrs \u2022 ", t.origin_meeting_point), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-emerald-700 font-bold mt-1"
-  }, "Aporte: $", t.suggested_seat_price.toLocaleString('es-CO'), " COP"), t.stops && t.stops.length > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "mt-2.5 p-2 bg-amber-50 rounded-xl border border-amber-200 text-xs"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "text-[11px] font-bold text-amber-900 flex items-center gap-1 mb-1"
-  }, /*#__PURE__*/React.createElement("i", {
-    "data-lucide": "signpost",
-    className: "w-3.5 h-3.5 text-amber-600"
-  }), " Paradas intermedias solicitadas (", t.stops.length, "/3):"), /*#__PURE__*/React.createElement("div", {
-    className: "space-y-1"
-  }, t.stops.map((st, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    className: "text-[11px] text-slate-700 flex items-center gap-1.5"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "w-3.5 h-3.5 rounded-full bg-amber-500 text-white font-bold text-[8.5px] flex items-center justify-center shrink-0"
-  }, i + 1), /*#__PURE__*/React.createElement("span", {
-    className: "font-semibold text-slate-900 truncate"
-  }, st.stop_name), /*#__PURE__*/React.createElement("span", {
-    className: "text-slate-400 text-[10px]"
-  }, "(", st.passenger_name, ")")))))), /*#__PURE__*/React.createElement("div", {
-    className: "mt-4 pt-3 border-t border-slate-100 flex items-center gap-2"
-  }, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSelectedReceiptData({
-      booking: {
-        id: `RUTAU-PUB-${t.id}`,
-        passenger_name: 'Cupos Asignados',
-        stop_requested: null
-      },
-      trip: t
-    }),
-    className: "flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200",
-    title: "Ver Desglose de Gasolina"
-  }, /*#__PURE__*/React.createElement("i", {
-    "data-lucide": "receipt",
-    className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, "Ver Aporte Gasolina")), /*#__PURE__*/React.createElement("button", {
-    onClick: () => onShareWhatsApp(t),
-    className: "py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95",
-    title: "Notificar a compa\xF1eros por WhatsApp"
-  }, /*#__PURE__*/React.createElement("i", {
-    "data-lucide": "share-2",
-    className: "w-3.5 h-3.5"
-  }), /*#__PURE__*/React.createElement("span", null, "Notificar"))))))), selectedReceiptData && /*#__PURE__*/React.createElement(DigitalReceiptModal, {
+  }, myPublished.map(t => {
+    const tripBookings = bookings.filter(b => b.trip_id === t.id);
+    return /*#__PURE__*/React.createElement("div", {
+      key: t.id,
+      className: "glass-panel p-4 flex flex-col justify-between bg-white border border-orange-100 rounded-2xl shadow-sm"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center justify-between mb-2"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "font-bold text-slate-900"
+    }, t.destination_zone), /*#__PURE__*/React.createElement("div", {
+      className: "flex items-center gap-1.5"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: `px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${t.status === 'finalizado' ? 'bg-slate-100 text-slate-700 border-slate-300' : t.status === 'cancelado' ? 'bg-rose-100 text-rose-700 border-rose-300' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`
+    }, t.status || 'programado'), /*#__PURE__*/React.createElement("span", {
+      className: "text-xs text-emerald-700 font-bold"
+    }, t.available_seats, "/", t.total_seats, " libres"))), /*#__PURE__*/React.createElement("p", {
+      className: "text-xs text-slate-600"
+    }, "Salida: ", t.departure_time, " hrs \u2022 ", t.origin_meeting_point), /*#__PURE__*/React.createElement("p", {
+      className: "text-xs text-emerald-700 font-bold mt-1"
+    }, "Aporte: $", t.suggested_seat_price.toLocaleString('es-CO'), " COP"), tripBookings.length > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "mt-2.5 p-2 bg-emerald-50/70 rounded-xl border border-emerald-200 text-xs"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-[11px] font-bold text-emerald-900 flex items-center gap-1 mb-1"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "users",
+      className: "w-3.5 h-3.5 text-emerald-600"
+    }), " Pasajeros confirmados (", tripBookings.length, "):"), /*#__PURE__*/React.createElement("div", {
+      className: "space-y-1"
+    }, tripBookings.map(tb => /*#__PURE__*/React.createElement("div", {
+      key: tb.id,
+      className: "text-[11px] text-slate-700 flex items-center justify-between"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "font-semibold text-slate-900"
+    }, tb.passenger_name), /*#__PURE__*/React.createElement("span", {
+      className: "text-slate-500 text-[10px]"
+    }, tb.stop_requested || 'Destino final'))))), t.stops && t.stops.length > 0 && /*#__PURE__*/React.createElement("div", {
+      className: "mt-2.5 p-2 bg-amber-50 rounded-xl border border-amber-200 text-xs"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "text-[11px] font-bold text-amber-900 flex items-center gap-1 mb-1"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "signpost",
+      className: "w-3.5 h-3.5 text-amber-600"
+    }), " Paradas intermedias solicitadas (", t.stops.length, "/3):"), /*#__PURE__*/React.createElement("div", {
+      className: "space-y-1"
+    }, t.stops.map((st, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "text-[11px] text-slate-700 flex items-center gap-1.5"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "w-3.5 h-3.5 rounded-full bg-amber-500 text-white font-bold text-[8.5px] flex items-center justify-center shrink-0"
+    }, i + 1), /*#__PURE__*/React.createElement("span", {
+      className: "font-semibold text-slate-900 truncate"
+    }, st.stop_name), /*#__PURE__*/React.createElement("span", {
+      className: "text-slate-400 text-[10px]"
+    }, "(", st.passenger_name, ")")))))), /*#__PURE__*/React.createElement("div", {
+      className: "mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 flex-wrap"
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setSelectedReceiptData({
+        booking: {
+          id: `RUTAU-PUB-${t.id}`,
+          passenger_name: 'Cupos Asignados',
+          stop_requested: null
+        },
+        trip: t
+      }),
+      className: "flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200",
+      title: "Ver Desglose de Gasolina"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "receipt",
+      className: "w-3.5 h-3.5"
+    }), /*#__PURE__*/React.createElement("span", null, "Aporte Gasolina")), t.status !== 'finalizado' && t.status !== 'cancelado' && onUpdateTripStatus && /*#__PURE__*/React.createElement("button", {
+      onClick: () => onUpdateTripStatus(t.id, 'finalizado'),
+      className: "py-2 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95",
+      title: "Marcar viaje como finalizado"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "check-circle",
+      className: "w-3.5 h-3.5"
+    }), /*#__PURE__*/React.createElement("span", null, "Finalizar")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => onShareWhatsApp(t),
+      className: "py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95",
+      title: "Notificar a compa\xF1eros por WhatsApp"
+    }, /*#__PURE__*/React.createElement("i", {
+      "data-lucide": "share-2",
+      className: "w-3.5 h-3.5"
+    }))));
+  }))), selectedReceiptData && /*#__PURE__*/React.createElement(DigitalReceiptModal, {
     isOpen: !!selectedReceiptData,
     onClose: () => setSelectedReceiptData(null),
     booking: selectedReceiptData.booking,
@@ -4307,6 +4530,10 @@ function MyTripsView({
     isOpen: !!reviewTargetUser,
     onClose: () => setReviewTargetUser(null),
     targetUser: reviewTargetUser,
+    onSubmitReview: data => onSubmitReview && onSubmitReview({
+      ...data,
+      tripId: reviewTargetUser.tripId
+    }),
     addToast: addToast
   }));
 }
@@ -4315,7 +4542,9 @@ function MyTripsView({
 // 9. COMPONENTE: CampusSecurityView (Central de Seguridad Institucional)
 // ==========================================================================
 function CampusSecurityView({
-  onOpenSos
+  onOpenSos,
+  sosAlerts = [],
+  onResolveSosAlert
 }) {
   return /*#__PURE__*/React.createElement("div", {
     className: "max-w-4xl mx-auto space-y-6"
@@ -4324,16 +4553,16 @@ function CampusSecurityView({
   }, /*#__PURE__*/React.createElement("div", {
     className: "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "flex items-center gap-2 mb-2"
+    className: "flex items-center gap-2 mb-2 flex-wrap"
   }, /*#__PURE__*/React.createElement("span", {
     className: "px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-300"
   }, "Central de Seguridad Activa"), /*#__PURE__*/React.createElement("span", {
     className: "text-xs text-slate-500 font-medium"
-  }, "Pascual Bravo Robledo")), /*#__PURE__*/React.createElement("h1", {
+  }, "Campus Robledo & Sede C4TA San Javier")), /*#__PURE__*/React.createElement("h1", {
     className: "text-2xl font-bold text-slate-900"
   }, "Seguridad y Acompa\xF1amiento Campus"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-600 mt-1 max-w-xl"
-  }, "Protocolo de movilidad nocturna protegida para salidas despu\xE9s de las 21:00 hrs. Enlace directo con vigilancia y cuadrante de polic\xEDa.")), /*#__PURE__*/React.createElement("button", {
+  }, "Protocolo de movilidad nocturna protegida para salidas despu\xE9s de las 21:00 hrs en ambas sedes institucionales. Enlace directo con vigilancia y cuadrante de polic\xEDa.")), /*#__PURE__*/React.createElement("button", {
     onClick: onOpenSos,
     className: "px-6 py-3 bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-rose-600/30 flex items-center gap-2 active:scale-95 badge-sos"
   }, /*#__PURE__*/React.createElement("i", {
@@ -4350,9 +4579,11 @@ function CampusSecurityView({
     className: "font-bold text-sm text-slate-900 mb-1"
   }, "L\xEDnea de Emergencia"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-600"
-  }, "Central Vigilancia: 01 8000 42 22 22"), /*#__PURE__*/React.createElement("p", {
+  }, "Central Vigilancia: ", /*#__PURE__*/React.createElement("strong", null, "01 8000 42 22 22")), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-600"
-  }, "Extensi\xF3n Interna: 100 / 102")), /*#__PURE__*/React.createElement("div", {
+  }, "Extensi\xF3n Interna: 100 / 102"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-600 mt-1"
+  }, "L\xEDnea \xDAnica Emergencias: ", /*#__PURE__*/React.createElement("strong", null, "123"))), /*#__PURE__*/React.createElement("div", {
     className: "glass-panel p-5 bg-white border border-orange-100 rounded-2xl shadow-sm"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "shield-check",
@@ -4361,9 +4592,9 @@ function CampusSecurityView({
     className: "font-bold text-sm text-slate-900 mb-1"
   }, "Puntos de Salida Iluminados"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-600"
-  }, "1. Porter\xEDa Principal Calle 73"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-600"
-  }, "2. Salida Carrera 78 (Monitoreada)")), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("strong", null, "Robledo:"), " Porter\xEDa Calle 73 (Bloque 2) y Carrera 78"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-slate-600 mt-1"
+  }, /*#__PURE__*/React.createElement("strong", null, "C4TA San Javier:"), " Porter\xEDa Calle 44 #98-20 y Bah\xEDa Metro")), /*#__PURE__*/React.createElement("div", {
     className: "glass-panel p-5 bg-white border border-orange-100 rounded-2xl shadow-sm"
   }, /*#__PURE__*/React.createElement("i", {
     "data-lucide": "clock",
@@ -4374,7 +4605,49 @@ function CampusSecurityView({
     className: "text-xs text-slate-600"
   }, "Acompa\xF1amiento: 20:30 a 22:30 hrs"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs text-slate-600"
-  }, "Verificaci\xF3n institucional en porter\xEDa"))));
+  }, "Verificaci\xF3n institucional en porter\xEDa"))), /*#__PURE__*/React.createElement("div", {
+    className: "glass-panel p-5 bg-white border border-orange-100 rounded-2xl shadow-sm"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between mb-3"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-sm font-bold text-slate-900 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "shield-alert",
+    className: "w-4 h-4 text-rose-600"
+  }), /*#__PURE__*/React.createElement("span", null, "Bit\xE1cora de Alertas SOS del Campus (", sosAlerts.length, ")")), /*#__PURE__*/React.createElement("span", {
+    className: "text-[11px] text-emerald-700 font-semibold"
+  }, "Monitoreo Continuo")), sosAlerts.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "check-circle",
+    className: "w-4 h-4 text-emerald-600 shrink-0"
+  }), /*#__PURE__*/React.createElement("span", null, "Sin incidentes activos. Todas las rutas nocturnas operan con normalidad.")) : /*#__PURE__*/React.createElement("div", {
+    className: "space-y-2.5"
+  }, sosAlerts.map(alert => /*#__PURE__*/React.createElement("div", {
+    key: alert.id,
+    className: `p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${alert.status === 'activa' ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'}`
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-2"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: `px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${alert.status === 'activa' ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-200 text-slate-700'}`
+  }, alert.status), /*#__PURE__*/React.createElement("strong", {
+    className: "text-slate-900"
+  }, alert.user_name), /*#__PURE__*/React.createElement("span", {
+    className: "text-slate-500"
+  }, "\u2022 ", new Date(alert.created_at).toLocaleTimeString('es-CO', {
+    hour: '2-digit',
+    minute: '2-digit'
+  }))), /*#__PURE__*/React.createElement("p", {
+    className: "text-slate-600 mt-1"
+  }, "\uD83D\uDCCD ", alert.campus, " (", alert.coords?.lat?.toFixed(4), ", ", alert.coords?.lng?.toFixed(4), ")")), alert.status === 'activa' && onResolveSosAlert && /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onResolveSosAlert(alert.id, 'atendida'),
+    className: "px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-[11px] transition"
+  }, "Marcar Atendida"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => onResolveSosAlert(alert.id, 'falsa_alarma'),
+    className: "px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 font-bold rounded-lg text-[11px] transition"
+  }, "Falsa Alarma")))))));
 }
 
 // ==========================================================================
@@ -4384,14 +4657,38 @@ function SosModal({
   isOpen,
   onClose,
   currentUser,
+  onLogSos,
   addToast
 }) {
   const [seconds, setSeconds] = useState(5);
   const [isTriggered, setIsTriggered] = useState(false);
+  const [campusLocation, setCampusLocation] = useState('Campus Robledo • Portería Calle 73');
+  const [gpsCoords, setGpsCoords] = useState({
+    lat: 6.2755,
+    lng: -75.5908
+  });
+  useEffect(() => {
+    if (isOpen) {
+      setSeconds(5);
+      setIsTriggered(false);
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => setGpsCoords({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        }), () => {});
+      }
+    }
+  }, [isOpen]);
   useEffect(() => {
     if (!isOpen || isTriggered) return;
     if (seconds <= 0) {
       setIsTriggered(true);
+      if (onLogSos) {
+        onLogSos({
+          campusLabel: campusLocation,
+          coords: gpsCoords
+        });
+      }
       addToast('🚨 ALERTA SOS EMITIDA: Central de Seguridad y contactos notificados con ubicación GPS.', 'error');
       return;
     }
@@ -4399,6 +4696,10 @@ function SosModal({
     return () => clearTimeout(timer);
   }, [seconds, isOpen, isTriggered]);
   if (!isOpen) return null;
+  const handleWhatsAppEmergency = () => {
+    const text = encodeURIComponent(`🚨 *ALERTA SOS - RutaU Pascual Bravo*\n` + `Estudiante: ${currentUser ? currentUser.full_name : 'Usuario Verificado'}\n` + `📍 Ubicación: ${campusLocation}\n` + `🗺️ Coordenadas GPS: https://maps.google.com/?q=${gpsCoords.lat},${gpsCoords.lng}\n` + `Por favor comunicarse de inmediato.`);
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
   return /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
   }, /*#__PURE__*/React.createElement("div", {
@@ -4417,8 +4718,35 @@ function SosModal({
   })), /*#__PURE__*/React.createElement("h2", {
     className: "text-2xl font-black text-rose-600 mb-1"
   }, "ALERTA SOS CAMPUS"), /*#__PURE__*/React.createElement("p", {
-    className: "text-xs text-slate-600 mb-6 font-medium"
+    className: "text-xs text-slate-600 mb-4 font-medium"
   }, isTriggered ? 'La alerta de emergencia ha sido transmitida en tiempo real al despacho de seguridad institucional.' : 'Transmitiendo señal de auxilio a la central de vigilancia Pascual Bravo en:'), !isTriggered ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 text-left"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "block text-[11px] font-bold text-slate-700 mb-1"
+  }, "Sede / Punto de Referencia:"), /*#__PURE__*/React.createElement("select", {
+    value: campusLocation,
+    onChange: e => {
+      setCampusLocation(e.target.value);
+      if (e.target.value.includes('C4TA')) {
+        setGpsCoords({
+          lat: 6.252965,
+          lng: -75.614174
+        });
+      } else {
+        setGpsCoords({
+          lat: 6.2755,
+          lng: -75.5908
+        });
+      }
+    },
+    className: "w-full px-3 py-2 bg-rose-50/50 border border-rose-200 rounded-xl text-xs font-semibold text-slate-800"
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "Campus Robledo \u2022 Porter\xEDa Calle 73"
+  }, "\uD83C\uDF93 Campus Robledo \u2022 Porter\xEDa Calle 73"), /*#__PURE__*/React.createElement("option", {
+    value: "Sede C4TA San Javier \u2022 Calle 44 #98-20"
+  }, "\uD83C\uDFDB\uFE0F Sede C4TA San Javier \u2022 Calle 44"), /*#__PURE__*/React.createElement("option", {
+    value: "En Ruta Nocturna (GPS Activo)"
+  }, "\uD83D\uDE97 En Ruta Nocturna (GPS Activo)"))), /*#__PURE__*/React.createElement("div", {
     className: "text-5xl font-black text-slate-900 mb-4 tabular-nums animate-bounce"
   }, "00:0", seconds), /*#__PURE__*/React.createElement("div", {
     className: "w-full bg-slate-100 h-2.5 rounded-full mb-6 overflow-hidden"
@@ -4434,7 +4762,15 @@ function SosModal({
     className: "space-y-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium"
-  }, "Ubicaci\xF3n GPS fijada: ", /*#__PURE__*/React.createElement("strong", null, "Campus Robledo Calle 73"), /*#__PURE__*/React.createElement("br", null), "Compa\xF1ero: ", /*#__PURE__*/React.createElement("strong", null, currentUser ? currentUser.full_name : 'Estudiante Verificado')), /*#__PURE__*/React.createElement("button", {
+  }, "Ubicaci\xF3n GPS fijada: ", /*#__PURE__*/React.createElement("strong", null, campusLocation), /*#__PURE__*/React.createElement("br", null), "Coordenadas: ", /*#__PURE__*/React.createElement("span", {
+    className: "font-mono"
+  }, gpsCoords.lat.toFixed(4), ", ", gpsCoords.lng.toFixed(4)), /*#__PURE__*/React.createElement("br", null), "Compa\xF1ero: ", /*#__PURE__*/React.createElement("strong", null, currentUser ? currentUser.full_name : 'Estudiante Verificado')), /*#__PURE__*/React.createElement("button", {
+    onClick: handleWhatsAppEmergency,
+    className: "w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
+  }, /*#__PURE__*/React.createElement("i", {
+    "data-lucide": "share-2",
+    className: "w-4 h-4"
+  }), /*#__PURE__*/React.createElement("span", null, "Enviar Ubicaci\xF3n SOS por WhatsApp")), /*#__PURE__*/React.createElement("button", {
     onClick: onClose,
     className: "w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm rounded-xl transition shadow-md shadow-rose-600/30"
   }, "Entendido"))));
@@ -4452,13 +4788,40 @@ function SupabaseModal({
   const [key, setKey] = useState(() => localStorage.getItem('rutau_supabase_key') || '');
   const [status, setStatus] = useState('Listo para conectar');
   if (!isOpen) return null;
-  const handleSave = e => {
+  const handleSave = async e => {
     e.preventDefault();
-    localStorage.setItem('rutau_supabase_url', url);
-    localStorage.setItem('rutau_supabase_key', key);
-    setStatus('Conectado a Supabase');
-    addToast('Configuración de Supabase guardada exitosamente.', 'success');
-    setTimeout(() => onClose(), 800);
+    const cleanUrl = url.trim();
+    const cleanKey = key.trim();
+    if (!cleanUrl.startsWith('https://') || !cleanUrl.includes('supabase.co')) {
+      setStatus('URL de Supabase inválida');
+      addToast('Ingresa una Project URL válida de Supabase (https://...supabase.co).', 'error');
+      return;
+    }
+    localStorage.setItem('rutau_supabase_url', cleanUrl);
+    localStorage.setItem('rutau_supabase_key', cleanKey);
+    try {
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        const client = window.supabase.createClient(cleanUrl, cleanKey);
+        window.rutauSupabaseClient = client;
+        const {
+          error
+        } = await client.from('campuses').select('id').limit(1);
+        if (error) {
+          setStatus('Credenciales guardadas (Modo Offline Activo)');
+          addToast('Credenciales guardadas. Usando almacenamiento local como respaldo.', 'info');
+        } else {
+          setStatus('Conectado en Tiempo Real a Supabase');
+          addToast('¡Conexión verificada con PostgreSQL en Supabase!', 'success');
+        }
+      } else {
+        setStatus('Credenciales guardadas (Modo Local)');
+        addToast('Configuración de Supabase guardada exitosamente.', 'success');
+      }
+    } catch (err) {
+      setStatus('Guardado con respaldo local');
+      addToast('Credenciales guardadas. Respaldo local activo.', 'info');
+    }
+    setTimeout(() => onClose(), 900);
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4"

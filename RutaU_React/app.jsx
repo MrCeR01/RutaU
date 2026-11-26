@@ -449,6 +449,24 @@ function RutaUApp() {
     }
   });
 
+  const [reviews, setReviews] = useState(() => {
+    try {
+      const stored = localStorage.getItem('rutau_reviews');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [sosAlerts, setSosAlerts] = useState(() => {
+    try {
+      const stored = localStorage.getItem('rutau_sos_alerts');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [toasts, setToasts] = useState([]);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
@@ -485,6 +503,18 @@ function RutaUApp() {
       localStorage.setItem('rutau_bookings', JSON.stringify(bookings));
     } catch (e) {}
   }, [bookings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rutau_reviews', JSON.stringify(reviews));
+    } catch (e) {}
+  }, [reviews]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('rutau_sos_alerts', JSON.stringify(sosAlerts));
+    } catch (e) {}
+  }, [sosAlerts]);
 
   useEffect(() => {
     if (currentUser && jwtToken) {
@@ -744,11 +774,106 @@ function RutaUApp() {
       `📍 Salida: ${trip.origin_meeting_point}\n` +
       `🎯 Destino: ${trip.destination_zone} (${trip.destination_address})\n` +
       `⏰ Hora salida: ${trip.departure_time} hrs\n` +
-      `⛽ Aporte gasolina: $${trip.suggested_seat_price.toLocaleString('es-CO')} COP\n` +
+      `⛽ Aporte gasolina: ${trip.suggested_seat_price.toLocaleString('es-CO')} COP\n` +
       `💺 Cupos disponibles: ${trip.available_seats} de ${trip.total_seats}\n\n` +
       `_Reserva tu cupo con correo de dominio institucional en RutaU._`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
+
+  const shareSafeArrivalOnWhatsApp = (trip, booking) => {
+    const passengerName = currentUser ? currentUser.full_name : (booking?.passenger_name || 'Estudiante Pascual Bravo');
+    const stopInfo = booking?.stop_requested && booking.stop_requested !== 'Destino Final'
+      ? booking.stop_requested
+      : `${trip?.destination_zone || 'Destino'} (${trip?.destination_address || 'Punto acordado'})`;
+    const text = encodeURIComponent(
+      `✅ *RutaU Pascual Bravo | Reporte de Llegada Segura*\n` +
+      `Estudiante: ${passengerName}\n` +
+      `📍 Punto de llegada: ${stopInfo}\n` +
+      `🚗 Conductor: ${trip?.driver_name || 'Comunidad Institucional'} (${trip?.vehicle_summary || 'Vehículo verificado'})\n` +
+      `🕒 Hora de reporte: ${new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}\n\n` +
+      `_He llegado bien a mi destino gracias a la red de movilidad colaborativa RutaU._`
+    );
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+    addToast('Abriendo WhatsApp con tu reporte de llegada segura.', 'success');
+  };
+
+  const handleCancelBooking = (bookingId) => {
+    const target = bookings.find(b => b.id === bookingId);
+    if (!target) return;
+
+    setBookings(prev => prev.filter(b => b.id !== bookingId));
+    setTrips(prev => prev.map(t => {
+      if (t.id === target.trip_id) {
+        const updatedStops = (t.stops || []).filter(s => s.passenger_id !== target.passenger_id);
+        return {
+          ...t,
+          available_seats: Math.min(t.total_seats, t.available_seats + 1),
+          stops: updatedStops
+        };
+      }
+      return t;
+    }));
+    addToast('Reserva cancelada. El cupo y la parada intermedia han quedado disponibles nuevamente.', 'info');
+  };
+
+  const handleUpdateTripStatus = (tripId, newStatus) => {
+    setTrips(prev => prev.map(t => t.id === tripId ? { ...t, status: newStatus } : t));
+    if (newStatus === 'finalizado') {
+      addToast('¡Trayecto marcado como finalizado! Tus pasajeros ya pueden calificar el viaje.', 'success');
+    } else if (newStatus === 'cancelado') {
+      addToast('Trayecto cancelado. Los pasajeros inscritos serán notificados.', 'info');
+    }
+  };
+
+  const handleSubmitReview = ({ targetUserId, tripId, rating, punctuality, respect, comment }) => {
+    const newReview = {
+      id: `rev-${Date.now()}`,
+      trip_id: tripId || null,
+      reviewer_id: currentUser ? currentUser.id : 'usr-anon',
+      reviewer_name: currentUser ? currentUser.full_name : 'Estudiante Pascual Bravo',
+      reviewee_id: targetUserId,
+      rating,
+      punctuality_rating: punctuality,
+      respect_rating: respect,
+      comment: comment || '',
+      created_at: new Date().toISOString()
+    };
+
+    const updatedReviews = [newReview, ...reviews];
+    setReviews(updatedReviews);
+
+    // Recalcular promedio de reputación del usuario evaluado
+    const userReviews = updatedReviews.filter(r => r.reviewee_id === targetUserId);
+    const targetUser = registeredUsers.find(u => u.id === targetUserId);
+    const baseRating = targetUser ? (targetUser.rating_average || 5.0) : 5.0;
+    const sumReviews = userReviews.reduce((acc, r) => acc + r.rating, 0);
+    // Ponderar calificación base inicial + nuevas reseñas reales
+    const newAvg = Number(((baseRating + sumReviews) / (1 + userReviews.length)).toFixed(1));
+
+    setRegisteredUsers(prev => prev.map(u => u.id === targetUserId ? { ...u, rating_average: newAvg } : u));
+    setTrips(prev => prev.map(t => t.driver_id === targetUserId ? { ...t, driver_rating: newAvg } : t));
+    if (currentUser && currentUser.id === targetUserId) {
+      setCurrentUser(prev => ({ ...prev, rating_average: newAvg }));
+    }
+  };
+
+  const handleLogSosAlert = ({ campusLabel, coords }) => {
+    const newAlert = {
+      id: `sos-${Date.now()}`,
+      user_id: currentUser ? currentUser.id : 'usr-invitado',
+      user_name: currentUser ? currentUser.full_name : 'Estudiante Verificado',
+      campus: campusLabel || 'Campus Robledo Calle 73',
+      coords: coords || { lat: 6.2755, lng: -75.5908 },
+      status: 'activa',
+      created_at: new Date().toISOString()
+    };
+    setSosAlerts(prev => [newAlert, ...prev]);
+  };
+
+  const handleResolveSosAlert = (alertId, newStatus) => {
+    setSosAlerts(prev => prev.map(a => a.id === alertId ? { ...a, status: newStatus, resolved_at: new Date().toISOString() } : a));
+    addToast(newStatus === 'atendida' ? 'Alerta marcada como atendida por vigilancia.' : 'Alerta cerrada como falsa alarma.', 'info');
   };
 
   return (
@@ -819,14 +944,24 @@ function RutaUApp() {
               <MyTripsView 
                 trips={trips}
                 bookings={bookings}
+                reviews={reviews}
                 currentUser={currentUser}
                 onOpenLogin={() => setIsLoginModalOpen(true)}
                 onShareWhatsApp={shareTripOnWhatsApp}
+                onShareSafeArrival={shareSafeArrivalOnWhatsApp}
+                onCancelBooking={handleCancelBooking}
+                onUpdateTripStatus={handleUpdateTripStatus}
+                onSubmitReview={handleSubmitReview}
+                addToast={addToast}
               />
             )}
 
             {activeTab === 'security' && (
-              <CampusSecurityView onOpenSos={() => setIsSosModalOpen(true)} />
+              <CampusSecurityView 
+                onOpenSos={() => setIsSosModalOpen(true)} 
+                sosAlerts={sosAlerts}
+                onResolveSosAlert={handleResolveSosAlert}
+              />
             )}
           </main>
 
@@ -896,6 +1031,7 @@ function RutaUApp() {
           isOpen={isSosModalOpen}
           onClose={() => setIsSosModalOpen(false)}
           currentUser={currentUser}
+          onLogSos={handleLogSosAlert}
           addToast={addToast}
         />
       )}
@@ -1967,11 +2103,11 @@ function TripFeed({ trips, filters, onFilterChange, onBookTrip, onOpenPublish, o
         trip.destination_zone.toLowerCase().includes(userZone) ||
         userZone.includes(trip.destination_zone.toLowerCase()) ||
         (trip.destination_address && trip.destination_address.toLowerCase().includes(userZone)) ||
-        (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(userZone))) ||
+        (trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(userZone))) ||
         zoneKeywords.some(kw => 
           trip.destination_zone.toLowerCase().includes(kw) ||
           (trip.destination_address && trip.destination_address.toLowerCase().includes(kw)) ||
-          (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(kw)))
+          (trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(kw)))
         )
       );
 
@@ -2332,11 +2468,11 @@ function TripCard({ trip, currentUser, onBookTrip, bookings, onShareWhatsApp, is
       trip.destination_zone.toLowerCase().includes(userZone) ||
       userZone.includes(trip.destination_zone.toLowerCase()) ||
       (trip.destination_address && trip.destination_address.toLowerCase().includes(userZone)) ||
-      (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(userZone))) ||
+      (trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(userZone))) ||
       zoneKeywords.some(kw => 
         trip.destination_zone.toLowerCase().includes(kw) ||
         (trip.destination_address && trip.destination_address.toLowerCase().includes(kw)) ||
-        (trip.stops && trip.stops.some(s => s.location_name && s.location_name.toLowerCase().includes(kw)))
+        (trip.stops && trip.stops.some(s => (s.stop_name || s.location_name || '').toLowerCase().includes(kw)))
       )
     )
   );
@@ -4071,6 +4207,23 @@ function PublishForm({ onPublish, currentUser, onClose }) {
         </div>
       </div>
 
+      {/* Vista Previa de Reparto Solidario de Combustible */}
+      <div className="p-3 bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl text-xs">
+        <div className="flex items-center justify-between mb-1">
+          <span className="font-bold text-emerald-900 flex items-center gap-1.5">
+            <i data-lucide="fuel" className="w-3.5 h-3.5 text-emerald-600"></i>
+            <span>Estimación Solidaria de Combustible</span>
+          </span>
+          <span className="text-[10px] font-extrabold bg-emerald-200/80 text-emerald-950 px-2 py-0.5 rounded-full">
+            Ahorro ~{Math.round(((Math.round((Number(price) || 3500) * 4.2) - (Number(price) || 3500)) / Math.round((Number(price) || 3500) * 4.2)) * 100)}% vs Taxi
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-[11px] text-slate-600">
+          <span>Aporte por cupo: <strong className="text-emerald-700">${(Number(price) || 0).toLocaleString('es-CO')} COP</strong></span>
+          <span>Recaudo máx. ({seats} cupos): <strong className="text-slate-900">${((Number(price) || 0) * (Number(seats) || 1)).toLocaleString('es-CO')} COP</strong></span>
+        </div>
+      </div>
+
       <p className="text-[11px] text-slate-500 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/70">
         💡 <strong>Paradas intermedias:</strong> Cada uno de tus pasajeros podrá solicitar 1 parada en el camino durante su reserva (hasta un máximo de 3 paradas por viaje).
       </p>
@@ -4541,9 +4694,9 @@ function ReviewRatingModal({ isOpen, onClose, targetUser, onSubmitReview, addToa
 // ==========================================================================
 // 8. COMPONENTE: MyTripsView (Mis Trayectos y Reservas)
 // ==========================================================================
-function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsApp, addToast }) {
+function MyTripsView({ trips, bookings, reviews, currentUser, onOpenLogin, onShareWhatsApp, onShareSafeArrival, onCancelBooking, onUpdateTripStatus, onSubmitReview, addToast }) {
   const [selectedReceiptData, setSelectedReceiptData] = useState(null); // { booking, trip }
-  const [reviewTargetUser, setReviewTargetUser] = useState(null); // { id, name }
+  const [reviewTargetUser, setReviewTargetUser] = useState(null); // { id, name, tripId }
 
   if (!currentUser) {
     return (
@@ -4563,10 +4716,16 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Mis Trayectos Universitarios</h1>
           <p className="text-xs text-slate-500 font-medium">Historial y gestión de cupos de {currentUser.full_name}</p>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 font-bold flex items-center gap-1">
+            <i data-lucide="star" className="w-3.5 h-3.5 fill-amber-500 text-amber-500"></i>
+            Reputación: {Number(currentUser.rating_average || 5).toFixed(1)}
+          </span>
         </div>
       </div>
 
@@ -4580,6 +4739,7 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {myBookings.map(b => {
               const trip = trips.find(t => t.id === b.trip_id);
+              const alreadyReviewed = trip && reviews && reviews.some(r => r.trip_id === trip.id && r.reviewer_id === currentUser.id && r.reviewee_id === trip.driver_id);
               return (
                 <div key={b.id} className="glass-panel p-4 flex flex-col justify-between bg-white border border-orange-100 rounded-2xl shadow-sm">
                   <div>
@@ -4589,7 +4749,10 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                         {b.status.toUpperCase()}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600">Conductor: <strong className="text-slate-900">{trip ? trip.driver_name : 'Compañero'}</strong></p>
+                    <p className="text-xs text-slate-600">
+                      Conductor: <strong className="text-slate-900">{trip ? trip.driver_name : 'Compañero'}</strong>
+                      {trip && <span className="ml-1.5 text-amber-600 font-bold">★ {trip.driver_rating}</span>}
+                    </p>
                     <p className="text-xs text-slate-600 mt-1">Salida: <strong className="text-orange-600 font-bold">{trip ? trip.departure_time : '21:45'} hrs</strong></p>
                     {b.stop_requested && (
                       <div className="mt-2 p-2 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center gap-1.5 font-medium">
@@ -4598,7 +4761,7 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                       </div>
                     )}
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
                     <button 
                       onClick={() => setSelectedReceiptData({ booking: b, trip })}
                       className="flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200"
@@ -4609,12 +4772,26 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                     </button>
                     {trip && (
                       <button 
-                        onClick={() => setReviewTargetUser({ id: trip.driver_id, name: trip.driver_name })}
-                        className="py-2 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-amber-200"
+                        onClick={() => setReviewTargetUser({ id: trip.driver_id, name: trip.driver_name, tripId: trip.id })}
+                        className={`py-2 px-2.5 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border ${
+                          alreadyReviewed
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200'
+                        }`}
                         title="Calificar Conductor"
                       >
                         <i data-lucide="star" className="w-3.5 h-3.5 fill-amber-500 text-amber-500"></i>
-                        <span>Calificar</span>
+                        <span>{alreadyReviewed ? 'Calificado' : 'Calificar'}</span>
+                      </button>
+                    )}
+                    {trip && onShareSafeArrival && (
+                      <button 
+                        onClick={() => onShareSafeArrival(trip, b)}
+                        className="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95"
+                        title="Reportar Llegada Segura por WhatsApp"
+                      >
+                        <i data-lucide="check-circle-2" className="w-3.5 h-3.5"></i>
+                        <span className="hidden sm:inline">Llegué Bien</span>
                       </button>
                     )}
                     {trip && (
@@ -4624,6 +4801,15 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
                         title="Compartir ruta en WhatsApp"
                       >
                         <i data-lucide="share-2" className="w-3.5 h-3.5"></i>
+                      </button>
+                    )}
+                    {onCancelBooking && (
+                      <button 
+                        onClick={() => onCancelBooking(b.id)}
+                        className="py-2 px-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-rose-200"
+                        title="Cancelar Reserva y Liberar Cupo"
+                      >
+                        <i data-lucide="x" className="w-3.5 h-3.5"></i>
                       </button>
                     )}
                   </div>
@@ -4642,59 +4828,97 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
           <div className="glass-panel p-6 text-center text-xs text-slate-500 bg-white border border-orange-100">Aún no has publicado viajes como conductor.</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {myPublished.map(t => (
-              <div key={t.id} className="glass-panel p-4 flex flex-col justify-between bg-white border border-orange-100 rounded-2xl shadow-sm">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold text-slate-900">{t.destination_zone}</span>
-                    <span className="text-xs text-emerald-700 font-bold">{t.available_seats} de {t.total_seats} cupos libres</span>
-                  </div>
-                  <p className="text-xs text-slate-600">Salida: {t.departure_time} hrs • {t.origin_meeting_point}</p>
-                  <p className="text-xs text-emerald-700 font-bold mt-1">Aporte: ${t.suggested_seat_price.toLocaleString('es-CO')} COP</p>
-                  
-                  {/* Lista de paradas de pasajeros en este viaje */}
-                  {t.stops && t.stops.length > 0 && (
-                    <div className="mt-2.5 p-2 bg-amber-50 rounded-xl border border-amber-200 text-xs">
-                      <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1 mb-1">
-                        <i data-lucide="signpost" className="w-3.5 h-3.5 text-amber-600"></i> Paradas intermedias solicitadas ({t.stops.length}/3):
-                      </span>
-                      <div className="space-y-1">
-                        {t.stops.map((st, i) => (
-                          <div key={i} className="text-[11px] text-slate-700 flex items-center gap-1.5">
-                            <span className="w-3.5 h-3.5 rounded-full bg-amber-500 text-white font-bold text-[8.5px] flex items-center justify-center shrink-0">{i+1}</span>
-                            <span className="font-semibold text-slate-900 truncate">{st.stop_name}</span>
-                            <span className="text-slate-400 text-[10px]">({st.passenger_name})</span>
-                          </div>
-                        ))}
+            {myPublished.map(t => {
+              const tripBookings = bookings.filter(b => b.trip_id === t.id);
+              return (
+                <div key={t.id} className="glass-panel p-4 flex flex-col justify-between bg-white border border-orange-100 rounded-2xl shadow-sm">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold text-slate-900">{t.destination_zone}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                          t.status === 'finalizado' ? 'bg-slate-100 text-slate-700 border-slate-300' :
+                          t.status === 'cancelado' ? 'bg-rose-100 text-rose-700 border-rose-300' :
+                          'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}>
+                          {t.status || 'programado'}
+                        </span>
+                        <span className="text-xs text-emerald-700 font-bold">{t.available_seats}/{t.total_seats} libres</span>
                       </div>
                     </div>
-                  )}
+                    <p className="text-xs text-slate-600">Salida: {t.departure_time} hrs • {t.origin_meeting_point}</p>
+                    <p className="text-xs text-emerald-700 font-bold mt-1">Aporte: ${t.suggested_seat_price.toLocaleString('es-CO')} COP</p>
+
+                    {/* Lista de pasajeros reservados */}
+                    {tripBookings.length > 0 && (
+                      <div className="mt-2.5 p-2 bg-emerald-50/70 rounded-xl border border-emerald-200 text-xs">
+                        <span className="text-[11px] font-bold text-emerald-900 flex items-center gap-1 mb-1">
+                          <i data-lucide="users" className="w-3.5 h-3.5 text-emerald-600"></i> Pasajeros confirmados ({tripBookings.length}):
+                        </span>
+                        <div className="space-y-1">
+                          {tripBookings.map(tb => (
+                            <div key={tb.id} className="text-[11px] text-slate-700 flex items-center justify-between">
+                              <span className="font-semibold text-slate-900">{tb.passenger_name}</span>
+                              <span className="text-slate-500 text-[10px]">{tb.stop_requested || 'Destino final'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Lista de paradas de pasajeros en este viaje */}
+                    {t.stops && t.stops.length > 0 && (
+                      <div className="mt-2.5 p-2 bg-amber-50 rounded-xl border border-amber-200 text-xs">
+                        <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1 mb-1">
+                          <i data-lucide="signpost" className="w-3.5 h-3.5 text-amber-600"></i> Paradas intermedias solicitadas ({t.stops.length}/3):
+                        </span>
+                        <div className="space-y-1">
+                          {t.stops.map((st, i) => (
+                            <div key={i} className="text-[11px] text-slate-700 flex items-center gap-1.5">
+                              <span className="w-3.5 h-3.5 rounded-full bg-amber-500 text-white font-bold text-[8.5px] flex items-center justify-center shrink-0">{i+1}</span>
+                              <span className="font-semibold text-slate-900 truncate">{st.stop_name}</span>
+                              <span className="text-slate-400 text-[10px]">({st.passenger_name})</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-1.5 flex-wrap">
+                    <button 
+                      onClick={() => setSelectedReceiptData({ booking: { id: `RUTAU-PUB-${t.id}`, passenger_name: 'Cupos Asignados', stop_requested: null }, trip: t })}
+                      className="flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200"
+                      title="Ver Desglose de Gasolina"
+                    >
+                      <i data-lucide="receipt" className="w-3.5 h-3.5"></i>
+                      <span>Aporte Gasolina</span>
+                    </button>
+                    {t.status !== 'finalizado' && t.status !== 'cancelado' && onUpdateTripStatus && (
+                      <button 
+                        onClick={() => onUpdateTripStatus(t.id, 'finalizado')}
+                        className="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95"
+                        title="Marcar viaje como finalizado"
+                      >
+                        <i data-lucide="check-circle" className="w-3.5 h-3.5"></i>
+                        <span>Finalizar</span>
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => onShareWhatsApp(t)}
+                      className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
+                      title="Notificar a compañeros por WhatsApp"
+                    >
+                      <i data-lucide="share-2" className="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
-                  <button 
-                    onClick={() => setSelectedReceiptData({ booking: { id: `RUTAU-PUB-${t.id}`, passenger_name: 'Cupos Asignados', stop_requested: null }, trip: t })}
-                    className="flex-1 py-2 px-2.5 bg-orange-50 hover:bg-orange-100 text-[#f25019] text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition active:scale-95 border border-orange-200"
-                    title="Ver Desglose de Gasolina"
-                  >
-                    <i data-lucide="receipt" className="w-3.5 h-3.5"></i>
-                    <span>Ver Aporte Gasolina</span>
-                  </button>
-                  <button 
-                    onClick={() => onShareWhatsApp(t)}
-                    className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95"
-                    title="Notificar a compañeros por WhatsApp"
-                  >
-                    <i data-lucide="share-2" className="w-3.5 h-3.5"></i>
-                    <span>Notificar</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Modal de Comprobante Digital (HU-08 & HU-09) */}
+      {/* Modal de Comprobante Digital */}
       {selectedReceiptData && (
         <DigitalReceiptModal 
           isOpen={!!selectedReceiptData}
@@ -4706,12 +4930,13 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
         />
       )}
 
-      {/* Modal de Calificación Comunitaria 1-5 Estrellas (HU-10) */}
+      {/* Modal de Calificación Comunitaria 1-5 Estrellas */}
       {reviewTargetUser && (
         <ReviewRatingModal 
           isOpen={!!reviewTargetUser}
           onClose={() => setReviewTargetUser(null)}
           targetUser={reviewTargetUser}
+          onSubmitReview={(data) => onSubmitReview && onSubmitReview({ ...data, tripId: reviewTargetUser.tripId })}
           addToast={addToast}
         />
       )}
@@ -4722,21 +4947,21 @@ function MyTripsView({ trips, bookings, currentUser, onOpenLogin, onShareWhatsAp
 // ==========================================================================
 // 9. COMPONENTE: CampusSecurityView (Central de Seguridad Institucional)
 // ==========================================================================
-function CampusSecurityView({ onOpenSos }) {
+function CampusSecurityView({ onOpenSos, sosAlerts = [], onResolveSosAlert }) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="glass-panel p-6 sm:p-8 bg-white border border-rose-200 rounded-2xl shadow-sm relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-300">
                 Central de Seguridad Activa
               </span>
-              <span className="text-xs text-slate-500 font-medium">Pascual Bravo Robledo</span>
+              <span className="text-xs text-slate-500 font-medium">Campus Robledo &amp; Sede C4TA San Javier</span>
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Seguridad y Acompañamiento Campus</h1>
             <p className="text-xs text-slate-600 mt-1 max-w-xl">
-              Protocolo de movilidad nocturna protegida para salidas después de las 21:00 hrs. Enlace directo con vigilancia y cuadrante de policía.
+              Protocolo de movilidad nocturna protegida para salidas después de las 21:00 hrs en ambas sedes institucionales. Enlace directo con vigilancia y cuadrante de policía.
             </p>
           </div>
           <button 
@@ -4753,15 +4978,16 @@ function CampusSecurityView({ onOpenSos }) {
         <div className="glass-panel p-5 bg-white border border-orange-100 rounded-2xl shadow-sm">
           <i data-lucide="phone-call" className="w-6 h-6 text-emerald-600 mb-2"></i>
           <h3 className="font-bold text-sm text-slate-900 mb-1">Línea de Emergencia</h3>
-          <p className="text-xs text-slate-600">Central Vigilancia: 01 8000 42 22 22</p>
+          <p className="text-xs text-slate-600">Central Vigilancia: <strong>01 8000 42 22 22</strong></p>
           <p className="text-xs text-slate-600">Extensión Interna: 100 / 102</p>
+          <p className="text-xs text-slate-600 mt-1">Línea Única Emergencias: <strong>123</strong></p>
         </div>
 
         <div className="glass-panel p-5 bg-white border border-orange-100 rounded-2xl shadow-sm">
           <i data-lucide="shield-check" className="w-6 h-6 text-blue-600 mb-2"></i>
           <h3 className="font-bold text-sm text-slate-900 mb-1">Puntos de Salida Iluminados</h3>
-          <p className="text-xs text-slate-600">1. Portería Principal Calle 73</p>
-          <p className="text-xs text-slate-600">2. Salida Carrera 78 (Monitoreada)</p>
+          <p className="text-xs text-slate-600"><strong>Robledo:</strong> Portería Calle 73 (Bloque 2) y Carrera 78</p>
+          <p className="text-xs text-slate-600 mt-1"><strong>C4TA San Javier:</strong> Portería Calle 44 #98-20 y Bahía Metro</p>
         </div>
 
         <div className="glass-panel p-5 bg-white border border-orange-100 rounded-2xl shadow-sm">
@@ -4771,6 +4997,61 @@ function CampusSecurityView({ onOpenSos }) {
           <p className="text-xs text-slate-600">Verificación institucional en portería</p>
         </div>
       </div>
+
+      {/* Bitácora de Alertas SOS Recientes */}
+      <div className="glass-panel p-5 bg-white border border-orange-100 rounded-2xl shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <i data-lucide="shield-alert" className="w-4 h-4 text-rose-600"></i>
+            <span>Bitácora de Alertas SOS del Campus ({sosAlerts.length})</span>
+          </h2>
+          <span className="text-[11px] text-emerald-700 font-semibold">Monitoreo Continuo</span>
+        </div>
+
+        {sosAlerts.length === 0 ? (
+          <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2">
+            <i data-lucide="check-circle" className="w-4 h-4 text-emerald-600 shrink-0"></i>
+            <span>Sin incidentes activos. Todas las rutas nocturnas operan con normalidad.</span>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {sosAlerts.map(alert => (
+              <div key={alert.id} className={`p-3 rounded-xl border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${
+                alert.status === 'activa' ? 'bg-rose-50 border-rose-200' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      alert.status === 'activa' ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-200 text-slate-700'
+                    }`}>
+                      {alert.status}
+                    </span>
+                    <strong className="text-slate-900">{alert.user_name}</strong>
+                    <span className="text-slate-500">• {new Date(alert.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                  </div>
+                  <p className="text-slate-600 mt-1">📍 {alert.campus} ({alert.coords?.lat?.toFixed(4)}, {alert.coords?.lng?.toFixed(4)})</p>
+                </div>
+                {alert.status === 'activa' && onResolveSosAlert && (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => onResolveSosAlert(alert.id, 'atendida')}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-[11px] transition"
+                    >
+                      Marcar Atendida
+                    </button>
+                    <button
+                      onClick={() => onResolveSosAlert(alert.id, 'falsa_alarma')}
+                      className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-600 border border-slate-300 font-bold rounded-lg text-[11px] transition"
+                    >
+                      Falsa Alarma
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -4778,14 +5059,32 @@ function CampusSecurityView({ onOpenSos }) {
 // ==========================================================================
 // 10. COMPONENTE: SosModal (Cuenta Regresiva de Emergencia 5s)
 // ==========================================================================
-function SosModal({ isOpen, onClose, currentUser, addToast }) {
+function SosModal({ isOpen, onClose, currentUser, onLogSos, addToast }) {
   const [seconds, setSeconds] = useState(5);
   const [isTriggered, setIsTriggered] = useState(false);
+  const [campusLocation, setCampusLocation] = useState('Campus Robledo • Portería Calle 73');
+  const [gpsCoords, setGpsCoords] = useState({ lat: 6.2755, lng: -75.5908 });
+
+  useEffect(() => {
+    if (isOpen) {
+      setSeconds(5);
+      setIsTriggered(false);
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => {}
+        );
+      }
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen || isTriggered) return;
     if (seconds <= 0) {
       setIsTriggered(true);
+      if (onLogSos) {
+        onLogSos({ campusLabel: campusLocation, coords: gpsCoords });
+      }
       addToast('🚨 ALERTA SOS EMITIDA: Central de Seguridad y contactos notificados con ubicación GPS.', 'error');
       return;
     }
@@ -4794,6 +5093,17 @@ function SosModal({ isOpen, onClose, currentUser, addToast }) {
   }, [seconds, isOpen, isTriggered]);
 
   if (!isOpen) return null;
+
+  const handleWhatsAppEmergency = () => {
+    const text = encodeURIComponent(
+      `🚨 *ALERTA SOS - RutaU Pascual Bravo*\n` +
+      `Estudiante: ${currentUser ? currentUser.full_name : 'Usuario Verificado'}\n` +
+      `📍 Ubicación: ${campusLocation}\n` +
+      `🗺️ Coordenadas GPS: https://maps.google.com/?q=${gpsCoords.lat},${gpsCoords.lng}\n` +
+      `Por favor comunicarse de inmediato.`
+    );
+    window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-4">
@@ -4807,7 +5117,7 @@ function SosModal({ isOpen, onClose, currentUser, addToast }) {
         </div>
 
         <h2 className="text-2xl font-black text-rose-600 mb-1">ALERTA SOS CAMPUS</h2>
-        <p className="text-xs text-slate-600 mb-6 font-medium">
+        <p className="text-xs text-slate-600 mb-4 font-medium">
           {isTriggered 
             ? 'La alerta de emergencia ha sido transmitida en tiempo real al despacho de seguridad institucional.'
             : 'Transmitiendo señal de auxilio a la central de vigilancia Pascual Bravo en:'}
@@ -4815,6 +5125,26 @@ function SosModal({ isOpen, onClose, currentUser, addToast }) {
 
         {!isTriggered ? (
           <>
+            <div className="mb-4 text-left">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">Sede / Punto de Referencia:</label>
+              <select
+                value={campusLocation}
+                onChange={(e) => {
+                  setCampusLocation(e.target.value);
+                  if (e.target.value.includes('C4TA')) {
+                    setGpsCoords({ lat: 6.252965, lng: -75.614174 });
+                  } else {
+                    setGpsCoords({ lat: 6.2755, lng: -75.5908 });
+                  }
+                }}
+                className="w-full px-3 py-2 bg-rose-50/50 border border-rose-200 rounded-xl text-xs font-semibold text-slate-800"
+              >
+                <option value="Campus Robledo • Portería Calle 73">🎓 Campus Robledo • Portería Calle 73</option>
+                <option value="Sede C4TA San Javier • Calle 44 #98-20">🏛️ Sede C4TA San Javier • Calle 44</option>
+                <option value="En Ruta Nocturna (GPS Activo)">🚗 En Ruta Nocturna (GPS Activo)</option>
+              </select>
+            </div>
+
             <div className="text-5xl font-black text-slate-900 mb-4 tabular-nums animate-bounce">
               00:0{seconds}
             </div>
@@ -4834,9 +5164,17 @@ function SosModal({ isOpen, onClose, currentUser, addToast }) {
         ) : (
           <div className="space-y-3">
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 font-medium">
-              Ubicación GPS fijada: <strong>Campus Robledo Calle 73</strong><br />
+              Ubicación GPS fijada: <strong>{campusLocation}</strong><br />
+              Coordenadas: <span className="font-mono">{gpsCoords.lat.toFixed(4)}, {gpsCoords.lng.toFixed(4)}</span><br />
               Compañero: <strong>{currentUser ? currentUser.full_name : 'Estudiante Verificado'}</strong>
             </div>
+            <button
+              onClick={handleWhatsAppEmergency}
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
+            >
+              <i data-lucide="share-2" className="w-4 h-4"></i>
+              <span>Enviar Ubicación SOS por WhatsApp</span>
+            </button>
             <button 
               onClick={onClose}
               className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm rounded-xl transition shadow-md shadow-rose-600/30"
@@ -4860,13 +5198,38 @@ function SupabaseModal({ isOpen, onClose, addToast }) {
 
   if (!isOpen) return null;
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    localStorage.setItem('rutau_supabase_url', url);
-    localStorage.setItem('rutau_supabase_key', key);
-    setStatus('Conectado a Supabase');
-    addToast('Configuración de Supabase guardada exitosamente.', 'success');
-    setTimeout(() => onClose(), 800);
+    const cleanUrl = url.trim();
+    const cleanKey = key.trim();
+    if (!cleanUrl.startsWith('https://') || !cleanUrl.includes('supabase.co')) {
+      setStatus('URL de Supabase inválida');
+      addToast('Ingresa una Project URL válida de Supabase (https://...supabase.co).', 'error');
+      return;
+    }
+    localStorage.setItem('rutau_supabase_url', cleanUrl);
+    localStorage.setItem('rutau_supabase_key', cleanKey);
+    try {
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        const client = window.supabase.createClient(cleanUrl, cleanKey);
+        window.rutauSupabaseClient = client;
+        const { error } = await client.from('campuses').select('id').limit(1);
+        if (error) {
+          setStatus('Credenciales guardadas (Modo Offline Activo)');
+          addToast('Credenciales guardadas. Usando almacenamiento local como respaldo.', 'info');
+        } else {
+          setStatus('Conectado en Tiempo Real a Supabase');
+          addToast('¡Conexión verificada con PostgreSQL en Supabase!', 'success');
+        }
+      } else {
+        setStatus('Credenciales guardadas (Modo Local)');
+        addToast('Configuración de Supabase guardada exitosamente.', 'success');
+      }
+    } catch (err) {
+      setStatus('Guardado con respaldo local');
+      addToast('Credenciales guardadas. Respaldo local activo.', 'info');
+    }
+    setTimeout(() => onClose(), 900);
   };
 
   return (
