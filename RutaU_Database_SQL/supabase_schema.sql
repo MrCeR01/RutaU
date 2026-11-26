@@ -276,3 +276,11 @@ CREATE POLICY "Creación de reseñas por participantes" ON public.reviews FOR IN
 CREATE POLICY "Visualización pública con enlace de tracking" ON public.live_tracking FOR SELECT USING (true);
 CREATE POLICY "Alertas SOS accesibles por creador y seguridad" ON public.sos_alerts FOR ALL USING (true);
 
+-- --------------------------------------------------------------------
+-- 12. PERMISOS DE ACCESO PARA ROLES API DE SUPABASE (anon / authenticated)
+-- --------------------------------------------------------------------
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT ON public.campuses, public.profiles, public.trips, public.trip_stops, public.reviews, public.live_tracking TO anon, authenticated;
+GRANT ALL ON public.profiles, public.vehicles, public.trips, public.trip_stops, public.bookings, public.reviews, public.sos_alerts, public.live_tracking TO authenticated;
+GRANT INSERT, SELECT ON public.sos_alerts TO anon;
+
